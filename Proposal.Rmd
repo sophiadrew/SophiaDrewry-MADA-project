@@ -1,0 +1,71 @@
+---
+title: "Proposal"
+author: "Sophia Drewry"
+date: "9/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question
+With the data I have chosen, I am looking to see if the El Niño and La Niña weather phenomena can be used as a predictor of arboviral disease transmission, specifically dengue in Iquitos, Peru. 
+
+# NOAA Data: What determines El Niño and La Niña episodes (ENSO)?
+El Niño and La Niña weather phenomena is measured as a function of the Southern Oscillation Index (SOI) and Sea Surface Temperature (SST). Both negative and positive SOI & SST values coincide abnormally warm and ocean waters across the eastern tropical & southern Pacific as well as change in air pressure. Other measures of outcomes of El Niño and La Niña episodes are ocean salinity, ocean temperature, ambient temperature, rainfall. 
+
+Monthly data from 1870 to 2021 on El Niño and La Niña episodes can be found in raw data folder. 
+Data obtained from NOAA [here](https://psl.noaa.gov/people/cathy.smith/best/table.txt)
+
+Below are the data used to determine an episode.Our primary region of interest is 3.4, In some cases data from region 4 is a better indicator for landfall values. If data from region 4 is used, it will be noted. 
+
+!(nino-regions.gif)
+
+### Southern Oscillation Index (SOI)
+> The Southern Oscillation Index (SOI) is a standardized index based on the observed sea level pressure differences between Tahiti and Darwin, Australia. The SOI is one measure of the large-scale fluctuations in air pressure occurring between the western and eastern tropical Pacific (i.e., the state of the Southern Oscillation) during El Niño and La Niña episodes. In general, smoothed time series of the SOI correspond very well with changes in ocean temperatures across the eastern tropical Pacific. The negative phase of the SOI represents below-normal air pressure at Tahiti and above-normal air pressure at Darwin. Prolonged periods of negative (positive) SOI values coincide with abnormally warm (cold) ocean waters across the eastern tropical Pacific typical of El Niño (La Niña) episodes. Information from NOAA
+
+Data obtained from NOAA [here](https://www.ncdc.noaa.gov/teleconnections/enso/indicators/soi/) 
+[Link to chart](https://www.cpc.ncep.noaa.gov/data/indices/soi)
+
+### Sea Surface Temperature (SST)
+>El Niño (La Niña) is a phenomenon in the equatorial Pacific Ocean characterized by a five consecutive 3-month running mean of sea surface temperature (SST) anomalies in the Niño 3.4 region that is above (below) the threshold of +0.5°C (-0.5°C). Information from NOAA
+
+Data obtained from NOAA [here](https://www.ncdc.noaa.gov/teleconnections/enso/indicators/sst/) 
+[Link to chart](https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices)
+
+# Dengue Forecasting Project Data
+As of September 16th 2021, Dengue incidence and Population data from Iquitos, Peru is obtained from Dengue Forecasting Project partnership with CDC and NOAA Population metrics are important metrics when comparing multiple locations.
+
+All data below is obtained from Dengue Forecasting Project [here](https://dengueforecasting.noaa.gov/)
+
+### Rainfall
+Rainfall is positively impacted by low and high SOI values and thus has an effect on disease prospective vectors.
+-	Range 1983-2014
+-	Daily measure of rainfall 
+
+### Dengue Incidence
+Clinic-based surveillance data
+-	Range 2001-2009
+-	Weekly incidence of reported cases. 
+-	Serological tests, serotype included
+
+#### Additional thoughts;
+Project may be expanded to other South American countries on the Atlantic coast. Yearly Dengue data can be found in the dengue [PAHO PLISA (Health Information Platform for the Americas) platform](https://www3.paho.org/data/index.php/en/mnu-topics/indicadores-dengue-en/dengue-nacional-en/252-dengue-pais-ano-en.html)
+
+PAHO PLISA (Health Information Platform for the Americas) platform also has yearly incidence information for other zoonotic diseases such as Chikungunya, Cutaneous Leishmaniasis and hantavirus. Non-zoonotic infectious disease such as Cholera and other diarrheal diseases could be analyzed if data is available. 
+
+# Analysis 
+A prediction model will be created using both data sets and accounting for various confounding factors such as population size and average dengue incidence to look for significant changes in transmission by week or by year depending on data set used. 
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+
+
+
+
+
