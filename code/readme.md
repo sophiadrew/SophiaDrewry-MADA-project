@@ -1,10 +1,15 @@
-Place your various R or Rmd scripts in the appropriate folders.
-
-You can either have fewer large scripts, or multiple scripts that do only specific actions. Those can be R scripts or Rmd files. In either case, document the scripts and what goes on in them so well that someone else (including future you) can easily figure out what is happening.
-
-The scripts should load the appropriate data (e.g. raw or processed), perform actions, and save results (e.g. processed data, figures, computed values) in the appropriate folders. Document somewhere what inputs each script takes and where output is placed. 
-
-If scripts need to be run in a specific order, document this. Either as comments in the script, or in a separate text file such as this. Ideally of course in both locations.
+# Coding Scripts
+This folder contains all the code scripts from both data processing and data analysis. This folder is structered as follows
 
 
-Depending on your specific project, you might want to have further sub-folders.
+## processing_code
+The folder lables "processing_code" is the code used to clean and wrangle data. 
+In this folder there are two scripts. 
+- processingscipt.R : Used for cleaning data from the Dengue Forecasting project 
+- processingscipt2.R : Used for cleaning data from the NOAA Data sources
+
+## analysis_code
+The folder lables "analysis_code" is the code used to analyze the data in various forms. 
+In this folder there are two scripts.
+- exploratoryscript.R : Used to produce some exploratory data tables and graphs which can be found in the results/exploratoryfigures folder
+- analysisscript.R : Will house the meat and potatos of my data analysis project. May be broken up into multiple parts
