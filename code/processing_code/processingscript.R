@@ -19,7 +19,7 @@ library(reshape2) # Reshaping data structure
 
 #From Dengue Forecasting Project
 data_spot1 <- here::here("data","raw_data","Iquitos_Weather.xlsx") # Climate data from Iquitos, Peru: station PE000084377; Lat = -3.783; Long = -73.3; Elevation = 126; Start = 1973; End = 2015
-data_spot2 <- here::here("data","raw_data","Iquitos_Dengue.csv") # Dengue data
+data_spot2 <- here::here("data","raw_data","dengue_iquitos.csv") # Dengue data
 data_spot3 <- here::here("data","raw_data","Iquitos_Population_Data.csv") # Population data by year
 
 #load data 
@@ -34,14 +34,21 @@ summary(dengue)
 str(dengue)
 View(dengue)
 tail(dengue)
-# Dates range from 2001-2009
+# Dates range from 2000-2009
 # Reports are weekly
+# Our main problem here is that Peru dengue transmission season overlaps years(ex. 200/2001) since on the southern hemisphere. 
+# For this reason we are going to look at data both by yearly week to match with traditional data sets and season week to get a better epi curve
+
+# Adding a yearly column for cumulative data
+dengue$year<- format(as.Date(dengue$week_start_date),"%Y")
+# Since the weeks are calculated by season week, we are going to calculate year week
+dengue$yearwk <- lubridate::isoweek(dengue$week_start_date)
 # Adding cumulative column for season
-dengue = dengue %>% group_by(season) %>% mutate(csum = cumsum(total_cases))
+dengue = dengue %>% group_by(season) %>% mutate(SeasonSum = cumsum(total_cases))
 # Renaming columns
-colnames(dengue) <- c('Season', 'WeekNum', 'Week', 'Denv1', 'Denv2', 'Denv3', 'Denv4', 'Other', 'Total', 'SeasonCumCases')
-
-
+colnames(dengue) <- c('Season', 'SeasonWk', 'WeekDate', 'Denv1', 'Denv2', 'Denv3', 'Denv4', 'Other', 'Total','Year', 'YearWk', 'SeasonCumCases')
+# Reordering columns
+dengue = dengue[, c('Season', 'SeasonWk', 'Year', 'YearWk', 'WeekDate', 'Denv1', 'Denv2', 'Denv3', 'Denv4', 'Other', 'Total', 'SeasonCumCases')]
 
 # Weather data  --------------------------------------------------------------------------------
 summary(station)
@@ -69,27 +76,51 @@ stationwk <- station %>% group_by(week) %>% summarize(min_air_temp = mean(minimu
 stationwk$min_air_temp <- kelvin.to.celsius(stationwk$min_air_temp)
 stationwk$max_air_temp <- kelvin.to.celsius(stationwk$max_air_temp)
 stationwk$tavg <- kelvin.to.celsius(stationwk$tavg)
-# All variable need to be turned into weekly averages 2001-2009 instead of the given range of 1979-2015
-stationwk<-stationwk %>%filter(week >= as.Date("2000-07-015") & week <= as.Date("2009-06-25"))
+# All variable need to be turned into weekly averages 2000-2013 instead of the given range of 1979-2015
+stationwk<-stationwk %>%filter(week >= as.Date("2000-07-01") & week <= as.Date("2013-06-25"))
+# Adding a year variable
+stationwk$year<- format(as.Date(stationwk$week),"%Y")
+# Now adding yearwk variable to match dengue data
+stationwk$yearwk <- lubridate::isoweek(stationwk$week)
 str(stationwk)
 # Renaming columns
-colnames(stationwk) <- c('Week', 'MinAT', 'MaxAT', 'Precip', 'TAvg')
+colnames(stationwk) <- c('Week', 'MinAT', 'MaxAT', 'Precip', 'TAvg', 'Year', 'YearWk')
 
 # Population  --------------------------------------------------------------------------------
 summary(population)
 str(population)
+population$Year <- as.numeric(population$Year)
 # This one has population number by year in integer form. Pretty straight forward here, no addition cleaning needed
+
+# Merging   --------------------------------------------------------------------------------
+Join1<-left_join(dengue,stationwk, by = c("Year","YearWk"))
+# Dropping a duplicate column
+Join1 = Join1 %>% select(-c("Week"))
+str(Join1)
+Join1$Year <- as.numeric(Join1$Year)
+#Now to join population data
+Join2<-left_join(Join1, population, by="Year")
+# Adding month variable to merge with NOAA data
+Join2$Month<- format(as.Date(Join2$WeekDate),"%m")
+str(Join2)
+Join2$Month <- as.integer(Join2$Month)
+# Reordering columns
+Join2 = Join2[, c('Season', 'SeasonWk', 'Month', 'Year', 'YearWk', 'WeekDate', 'Denv1', 'Denv2', 'Denv3', 'Denv4', 'Other', 'Total', 'SeasonCumCases', 'MinAT', 'MaxAT', 'Precip', 'TAvg', 'Estimated_population' )]
 
 
 
 # Save   --------------------------------------------------------------------------------
-# location to save file
-save_data_location1 <- here::here("data","processed_data","p.dengue.rds")
-save_data_location2 <- here::here("data","processed_data","p.stationwk.rds")
-save_data_location3 <- here::here("data","processed_data","p.population.rds")
+save_data_location1 <- here::here("data","processed_data","p.DFP.rds")
+# location to save file for other cleaned data files
+save_data_location2 <- here::here("data","processed_data","p.dengue.rds")
+save_data_location3 <- here::here("data","processed_data","p.stationwk.rds")
+save_data_location4 <- here::here("data","processed_data","p.population.rds")
 
-saveRDS(dengue, file = save_data_location1)
-saveRDS(stationwk, file = save_data_location2)
-saveRDS(population, file = save_data_location3)
+saveRDS(Join2, file = save_data_location1)
+saveRDS(dengue, file = save_data_location2)
+saveRDS(stationwk, file = save_data_location3)
+saveRDS(population, file = save_data_location4)
+
+
 
 

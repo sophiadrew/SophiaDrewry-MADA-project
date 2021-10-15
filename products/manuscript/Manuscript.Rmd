@@ -1,7 +1,7 @@
 ---
-title: "Example Manuscript Template for a Data Analysis Project"
+title: "Using El Niño Southern Oscillation (ENSO) Cycle as a Predictor for Dengue Transmission in Iquitos Peru"
 subtitle: ""
-author: Andreas Handel
+author: Sophia Drewry
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: article
@@ -11,77 +11,87 @@ output:
     number_sections: true
   bookdown::html_document2: 
     toc: false
-bibliography: ../references.bib
-csl: ../apa.csl
+bibliography: ../manuscript/references.bib
+csl: ../manuscript/apa.csl
 ---
-
-The structure below is a possible setup for a data analysis project (including the course project). For a manuscript, adjust as needed.
 
 
 # Summary/Abstract
-_Write a summary of your project._
 
 
-# Introduction 
+# Background
 
-## General Background Information
-_Provide enough background on your topic that others can understand the why and how of your analysis_ 
+Since the start of the 20th century, dengue fever and dengue hemoragic fever have caused a significant burden in many parts of the world. According to the WHO, dengue incidence has increased 30-fold in the past 50 years [@who2012global]. Environmental impacts on the breeding patterns and overall population of dengue's primary host, the aedes Aegypti mosquito can be the suspected cause of this increase incidence. Factors such as rapid urbanization, change in weather and conditions, and poor sanitation contribute to the population growth of such Aedes vectors [@medlock2015effect].
+Dengue has 4 main serotypes, all of which have been found to circulate in South America. The country of Peru has experienced intermittent dengue outbreaks, some lasting as log as 10 years[@stoddard2014long].It is also important to note that aedes Aegypti can also carry other arboviral diseases such as Zika, Chikungunya and West Nile, all of which are endemic to Peru to a smaller porportion. The city of Iquitos is conveniently located in close proximity to Nanay, Itaya, and Amazon Rivers and has a detailed dengue surveillance program set up with the Peruvian Ministry of Health and the U.S. Naval Medical Research Unit[@stoddard2014long]. Iquitos proximity to the ocean and higher altitude make this city ideal to study large scale weather phenomena on an urban level.
+The El Niño Southern Oscillation (ENSO) cycle has been shown to impact climate and ecology around the world. Its effect on infectious diseases transmission across South America has only been studied as isolated incidences or as general patterns on a limited geographic span. Climate data is important factor when studying zoonotic diseases and their geographic range. Waterborne and vector borne diseases usually see a spike in incidence rates when the host specie’s life cycle, habitat or breeding habits are altered, for this paper the Aedes aegypti mosquito host will be studied. The Aedes aegypti mosquito is the carrier of diseases found in south America such as dengue, Zika, West Nile virus, Chikungunya, and Venezuelan equine encephalitis (VEE). Dengue is the most prevalent arboviral disease in south America.
+ **Cite this
+The impact of temperature and weather patterns has been shown to affect aedes Aegypti habitat and population dynamics. While as of 2021, dengue is mainly found in tropical and subtropical regions, studies have predicted that by 2050 southern United States and coastal eastern China and Japan will be at risk of endemic dengue transmission due to global climate change [@messina2019current].
 
-## Description of data and data source
-_Describe what the data is, what it contains, where it is from, etc. Eventually this might be part of a methods section._
+ **Cite this
+### ENSO and Vector Population
+Other countries such as India and Australia have been able to create predictive models, showing that a change in mean SOI values and rainfall variables are associated with either an increase or decrease of dengue incidence 3 months later [@earnest2012meteorological,@hu2010dengue].
+
+
+# Description of data and data source
+## NOAA Data
+El Niño and La Niña weather phenomena is measured as a function of the Southern Oscillation Index (SOI) and Sea Surface Temperature (SST). Both negative and positive SOI & SST values coincide abnormally warm and ocean waters across the eastern tropical & southern Pacific as well as change in air pressure. Other measures of outcomes of El Niño and La Niña episodes are ocean salinity, ocean temperature, ambient temperature, rainfall. SOI, SST and ENSO data for the years of 2001-2009 is publicly available and obtained from the National Oceanic and Atmospheric Administration(NOAA)
+
+Our primary region of interest is 3.4, however in some cases data from region 4 is a better indicator for landfall values. For this reason, some variables will have both region 3.4 and 4 as predictors. If data from region 4 is used, it will be noted. 
+
+!(nino-regions.gif)
+
+## Dengue Forecasting Project Data
+Weekly dengue reported cases from 2001-2009 in Iquitos, Peru is obtained from the Dengue Forecasting Project partnership with CDC and NOAA. Since dengue incidence data was reported from serological tests, serotype(DENV1-4) is included. This publicly available dataset also includes yearly population and monthly average rainfall data as well.
 
 ## Questions/Hypotheses to be addressed
-_State the research questions you plan to answer with this analysis._
-
+With the data I have chosen, I am looking to see if the El Niño and La Niña weather phenomena can be used as a predictor of arboviral disease transmission, specifically dengue in Iquitos, Peru. 
 
 
 # Methods and Results
 
-_In most research papers, results and methods are separate. You can combine them here if you find it easier. You are also welcome to structure things such that those are separate sections._
-
-
-## Data aquisition
-_As applicable, explain where and how you got the data. If you directly import the data from an online source, you can combine this section with the next._
 
 ## Data import and cleaning
-_Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along._
+Data cleaning consisted of combining all NOAA data sets into one larger set. This was done by converting all dates into numerical forms across each platform as well as adding additional week numbers. It's important to note that the dengue data sets count incidents both weekly and by the physical date. This season in which the weeks are counted are not done by traditional year (starting in Janurary) but by Peruvian dengue seasons, starting in May. For this reason I chose to join all data sets using the physical date at the beginning of each week (month-day-year). Each data set was trimmed to match the original range of the dengue data set given.
 
 
 ## Exploratory analysis
+Initial exploratory data analysis was done on individual data sets after cleaning. Once sets were merged, addition descriptive table and models were produced. 
+With the exploratory date analysis, one of the main goals when looking at the ecological data was to understand the interaction between the NOAA variables, SOI, SST and ENSO classification. This is done in the following chart. 
+As mentioned previously both region 4 and 3.4 included in the data set because both are deemed as appropriate indicators of SST for the coastal Atlantic region. Each differ slightly but both are used for predicting patterns on the South American Coast (cite source)
 
-_Use a combination of text/tables/figures to explore and describe your data. You should produce plots or tables or other summary quantities for the most interesting/important quantities in your data. Depending on the total number of variables in your dataset, explore all or some of the others. FIgures produced here might be histograms or density plots, correlation plots, etc. Tables might summarize your data._
-
-_Continue by creating plots or tables of the outcome(s) of interest and the predictor/exposure/input variables you are most interested in. If your dataset is small, you can do that for all variables. Plots produced here can be scatterplots, boxplots, violinplots, etc. Tables can be simple 2x2 tables or larger ones._
-
-_To get some further insight into your data, if reasonable you could compute simple statistics (e.g. t-tests, simple regression model with 1 predictor, etc.) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p<0.05 means statistical significance" interpretation is not valid._
-
-Table \@ref(tab:summarytable) shows a table summarizing the data.
-
-
-```{r summarytable,  echo=FALSE}
-resulttable=readRDS("../../results/summarytable.rds")
-knitr::kable(resulttable, caption = 'Data summary table.')
+SOI values follow do not follow an obvious pattern of either region 4 and 3.4 SST value as pictured in  Figure \@ref(fig:EDAfig3)
+```{r EDAfig3,  fig.cap='EDAfig3.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig3.png")
+```
+After running a General Linear Model, region 3.4 was choosen for the final model as it is the best predictor of dengue cases. 
+```{r EAM1,  echo=FALSE}
+#resulttable=readRDS("../../results/exploratoryfigures/EAM1.Rds")
+#knitr::kable(table1, caption = 'GLM: Total dengue vs. SST from 3.4 & 4')
 ```
 
-
-Figure \@ref(fig:resultfigure) shows a scatterplot figure produced by one of the R scripts.
-
-```{r resultfigure,  fig.cap='Analysis figure.', echo=FALSE}
-knitr::include_graphics("../../results/resultfigure.png")
+Figure \@ref(fig:EDAfig4) is a visualization of El Niño and La Niña occurrences. ENSO values coded red are El Niño and values coded blue are La Niña. These are the official classifications done by NOAA using various climate indicies and are not as sensitive of an indicator.
+```{r EDAfig4,  fig.cap='EDAfig4.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig4.png")
 ```
 
+Dengue incidence in Iquitos Peru is represented in the following 3 graphs. Since all cases are reported via labortory testing, serotyping can be done. Figure
+ \@ref(fig:EDAfig6) show this distribution. Note the introduction of DENV-4 around 2008. 
+```{r EDAfig6,  fig.cap='EDAfig6', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig6.png")
+```
+This table \@ref(tab:Table1) summarized the data above.
+```{r Table1,  echo=FALSE}
+resulttable=readRDS("../../results/exploratoryfigures/Table1.RDS")
+knitr::kable(resulttable, caption = 'Table1.RDS.')
+```
+
+Cumulative incidence of reported dengue infection by year is shown in the following graph.
+Figure \@ref(fig:EDAfig7)
+```{r EDAfig7,  fig.cap='EDAfig7', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig7.png")
+```
 
 ## Full analysis
-
-_Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here._
-
-Example table \@ref(tab:resulttable) shows a table summarizing a linear model fit.
-
-```{r resulttable,  echo=FALSE}
-resulttable=readRDS("../../results/resulttable.rds")
-knitr::kable(resulttable, caption = 'Linear model fit table.')
-```
-
 
 # Discussion
 

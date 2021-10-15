@@ -1,0 +1,247 @@
+---
+title: "Explatory Data Analysis"
+author: "Sophia Drewry"
+date: "10/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script loads performs an exploratory data analysis on data sets in the processed_data folder.
+All results can be found in the Exploratory Data Analysis folder in the results folder 
+
+load needed packages. make sure they are installed.
+
+```{r}
+library(readr)
+library(dplyr) #for data processing
+library(here) #to set paths
+library(ggthemes)
+library(RColorBrewer)
+library(ggplot2)
+library(lubridate)
+library(ggforce)
+library(table1)
+library(tidymodels)
+
+#Load data
+data_spot1 <- here::here("data","processed_data","p.dengue.rds") 
+data_spot2 <- here::here("data","processed_data","p.stationwk.rds")
+data_spot3 <- here::here("data","processed_data","p.population.rds")
+data_spot4 <- here::here("data","processed_data","p.NOAAdta.rds")
+data_spot5 <- here::here("data","processed_data","Finaldata.rds")
+
+#load data 
+dengue <- read_rds(data_spot1)
+stationwk <- read_rds(data_spot2)
+population <- read_rds(data_spot3)
+NOAAdta <- read_rds(data_spot4)
+FINALdta <- read_rds(data_spot5)
+```
+# NOAA data  --------------------------------------------------------------------------------
+## SST Values for region 4 and 3.4
+```{r}
+NP1 = ggplot(NOAAdta, aes(x, y), col = group) + 
+  geom_line(data = NOAAdta, aes(x = Date, y = NINO4, color="NINO4")) +
+  geom_line(data = NOAAdta, aes(x = Date, y = NINO3.4, color="NINO 3.4")) +
+  xlab("Dates") +
+  ylab("SST") +
+  ggtitle("SST in Region 4 & 3.4 from 20") +
+  scale_color_ptol("") +
+  theme_minimal()
+print(NP1)
+Figure1 <- here("results", "exploratoryfigures", "EDAfig1.png")
+ggsave(filename = Figure1, plot = NP1)
+```
+
+## SOI Values
+```{r}
+NP2 = ggplot() + 
+  geom_line(data = NOAAdta, aes(x = Date, y = SOI)) +
+  xlab("Dates") +
+  ylab("SOI") +
+  ggtitle("SOI Values") +
+  scale_color_ptol("") +
+  theme_minimal()
+
+print(NP2)
+Figure2 <- here("results", "exploratoryfigures", "EDAfig2.png")
+ggsave(filename = Figure2, plot = NP2)
+```
+
+## SOI + SST
+Ok, we know the two interact, so lets view them on the same graph
+```{r}
+coeff <- 27
+NP3 = ggplot(NOAAdta, aes(x = Date), col = group) + 
+  geom_line(data = NOAAdta, aes(x = Date, y = NINO4, color="NINO 4")) +
+  geom_line(data = NOAAdta, aes(x = Date, y = NINO3.4, color="NINO 3.4")) +
+  geom_line(data = NOAAdta, aes(x = Date, y = SOI + coeff, color = "SOI")) +
+  xlab("Dates") +
+  ylab("SST") +
+  scale_color_ptol("") +
+  theme_minimal() +
+  scale_y_continuous(sec.axis = sec_axis(~. - coeff), name="SOI") +
+  ggtitle("SOI & SST in Region 4 & 3.4 Over Time")
+print(NP3)
+Figure3 <- here("results", "exploratoryfigures", "EDAfig3.png")
+ggsave(filename = Figure3, plot = NP3)
+```
+
+## Calendar view of El Nino/ La Nino monthly occurrence by year
+```{r}
+NP4 <- ggplot(NOAAdta, aes(x=Month, y=Year)) +
+  geom_tile(color = "white",
+            lwd = 1.5,
+            linetype = 1, aes(fill = ENSO)) +
+  labs(title = "El Nino/La Nino Occurance", y = "Year") +
+  coord_fixed() +
+  theme_minimal() +
+  scale_fill_gradient2(low = "#205EAC", mid = "#d3d3d3", high = "#AE2033")
+
+print(NP4)
+Figure4 <- here("results", "exploratoryfigures", "EDAfig4.png")
+ggsave(filename = Figure4, plot = NP4)
+```
+    
+# Station Data --------------------------------------------------------------------------------
+```{r}
+SP1 <- ggplot(stationwk, aes(x, y), col = group) + 
+    geom_line(data = stationwk, aes(x = Week, y = MinAT, color = "Min Air Temp")) +
+    geom_line(data = stationwk, aes(x = Week, y = MaxAT, color = "Max Air Temp")) +
+    geom_line(data = stationwk, aes(x = Week, y = TAvg, color = "Average Temperature")) +
+    geom_col(data = stationwk, aes(x = Week, y = Precip, color = "Precipitation")) +
+    scale_y_continuous(sec.axis = sec_axis(~.), name="Celcuis") +
+    xlab("Week") +
+    ylab("Centimeters") +
+    ggtitle("Weather Data by Week in Iquitos, Peru") +
+    theme_minimal() +
+    scale_color_ptol("")
+
+print(SP1)
+Figure5 <- here("results", "exploratoryfigures", "EDAfig5.png")
+ggsave(filename = Figure5, plot = SP1)
+```
+
+            
+# Dengue data  --------------------------------------------------------------------------------
+```{r}
+str(dengue)
+dengue$WeekDate <- as.Date(dengue$WeekDate) 
+# Weekly Reported Cases by Serotype
+DP1 = ggplot(dengue, aes(x, y), col = group) + 
+    geom_col(data = dengue, aes(x = WeekDate, y = Denv1, color = "Denv 1")) +
+    geom_col(data = dengue, aes(x = WeekDate, y = Denv2, color = "Denv 2")) +
+    geom_col(data = dengue, aes(x = WeekDate, y = Denv3, color = "Denv 3")) +
+    geom_col(data = dengue, aes(x = WeekDate, y = Denv4, color = "Denv 4")) +
+    geom_col(data = dengue, aes(x = WeekDate, y = Other, color = "Other")) +
+    xlab("Week") +
+    ylab("Number of reported cases") +
+    ggtitle("Weekly Reported Cases by Serotype in Iquitos Peru") +
+    theme_minimal() +
+    scale_color_ptol("")
+print(DP1)
+Figure6 <- here("results", "exploratoryfigures", "EDAfig6.png")
+ggsave(filename = Figure6, plot = DP1)
+```
+## Cumulative incidence by season
+```{r}
+DP2 <- dengue %>%
+  ggplot(aes(x = SeasonWk, y = SeasonCumCases)) +
+  geom_point(color = "darkorchid4") +
+  facet_wrap( ~ Season, ncol = 3) +
+  labs(title = "Cumulative Incidence for Dengue Cases by Season in Iquitos, Peru",
+       subtitle = "Data plotted by year",
+       y = "# of Reported Cases",
+       x = "Week") +
+  theme_minimal() +
+  scale_color_ptol("")
+print(DP2)
+Figure7 <- here("results", "exploratoryfigures", "EDAfig7.png")
+ggsave(filename = Figure7, plot = DP2)
+```
+## Dengue Serotype Table
+I want to get some yearly tables, so lets spit up the date by table
+```{r}
+dengue<- dengue %>% dplyr::mutate(year = lubridate::year(WeekDate), 
+                        month = lubridate::month(WeekDate), 
+                        day = lubridate::day(WeekDate))
+
+table1::label(dengue$Denv1) <- "Denv1"
+table1::label(dengue$Denv2) <- "Denv2"
+table1::label(dengue$Denv3) <- "Denv3"
+table1::label(dengue$Denv4) <- "Denv4"
+table1::label(dengue$Total) <- "Total Cases"
+Table1 <- table1::table1(~Denv1 + Denv2 + Denv3 + Denv4 + Total | year, data = dengue)
+Table1
+
+#save data frame table to file for later use in manuscript
+Table1 = here("results","exploratoryfigures", "Table1.RDS")
+saveRDS(Table1, file = Table1)
+```
+##############################################################################################  
+
+
+# EDA With FINALdta --------------------------------------------------------------------------------
+Some more visualization across datasets
+
+CP1 = ggplot(FINALdta, aes(x = WeekDate), col = group) + 
+  geom_line(data = FINALdta, aes(x = WeekDate, y = Total, color="Dengue Cases")) +
+  geom_col(data = FINALdta, aes(x = WeekDate, y = Precip, color="Precipitation")) +
+  scale_y_continuous(sec.axis = sec_axis(), name="SOI") +
+  xlab("Dates") +
+  ylab("Weather Variables") +
+  theme_wsj() +
+  scale_fill_wsj(palette = "colors6") +
+  ggtitle("Weather Variables and Dengue Cases")
+print(CP1)
+
+  geom_line(data = FINALdta, aes(x = WeekDate, y = MaxAT + coeff, color = "Average Temp")) +
+  geom_line(data = FINALdta, aes(x = WeekDate, y = MinAT + coeff, color = "Average Temp")) +
+  
+  scale_y_continuous(sec.axis = sec_axis(), name="SOI") +
+  ggtitle("Weather Variables and Dengue Cases")
+print(CP1)
+Figure3 <- here("results", "exploratoryfigures", "EDAfig3.png")
+ggsave(filename = Figure3, plot = NP3)
+
+We have a couple ambiguous predictors such as SST region and Min and Max AT
+## Choosing what SST NINO region (3.4 or 4) is the best predictor for Dengue IR
+Running quick LM to determine which is a better predictor of IR. Both continuous variables
+```{r}
+# model 1: Total dengue vs. SST from 3.4
+D3.4 <- lm(IR ~ NINO3.4, data = FINALdta)
+# model 2: Total dengue vs. SST from 4
+D4 <- lm(IR ~  NINO4, data = FINALdta)
+# Compare both
+anova(D3.4, D4) #Not usre if I should look at them seperatly in each model or run them together
+
+# Model 3: Total dengue vs. SST from 3.4 & 4 
+Dboth <- glm(IR ~ NINO4 + NINO3.4, data = FINALdta)
+EAM1 <- summary(Dboth)
+EAM1= here("results","exploratoryfigures", "EAM1.Rds")
+saveRDS(EAM1, file = EAM1)
+
+```
+It appears NINO 3.4 is the best predictor.
+
+## Choosing is min or max AirTemp is the best predictor for Dengue IR
+Running quick LM to determine which is a better predictor of IR. Both continuous variables
+```{r}
+# model 1: Total dengue vs. MIN AT
+MINat <- lm(IR ~ MinAT, data = FINALdta)
+summary(MINat)
+# model 2: Total dengue vs. MAX AT
+MAXat <- lm(IR ~ MaxAT, data = FINALdta)
+summary(MAXat)
+# Compare both
+anova(MAXat, MINat) #Not sure if I should look at them separately in each model or run them together
+
+# Model 3: Total dengue vs. both MIN and MAX AT
+ATboth <- glm(IR ~ MaxAT + MinAT, data = FINALdta)
+summary(ATboth)
+```
+
+Both variables look pretty good. Min seems to perform better but it may be worth including both in the model

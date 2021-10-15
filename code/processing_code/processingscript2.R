@@ -23,6 +23,7 @@ library(zoo)
 data_spot4 <- here::here("data","raw_data","noa.soi.txt") # SOI values
 data_spot5 <- here::here("data","raw_data","noaa.sst.txt") # SST values
 data_spot6 <- here::here("data","raw_data","elninoyrs.txt") # El nino/ la nina years
+data_spot7 <- here::here("data","processed_data","p.DFP.rds") #For future merging
 
 #load data 
 #NOAA data is stored as txt files
@@ -32,6 +33,8 @@ soi <- read.delim(data_spot4, sep = "" , header = T)
 # According to [this](https://www.cpc.ncep.noaa.gov/data/indices/Readme.index.shtml#SOICALC) Calculation FAQ by NOAA, I only need the standardized SOI values
 sst <- read.delim(data_spot5, sep = "" , header = T)
 ninoyr <- read.delim(data_spot6, sep = "" , header = F)
+DFP <- read_rds(data_spot7)
+
 
 
 # SOI  --------------------------------------------------------------------------------
@@ -45,7 +48,7 @@ colnames(soi) <- c('Year','1', '2','3','4','5','6','7','8','9','10','11','12')
 soi<-melt(soi, id.vars = c("Year"))
 # Check data type
 str(soi)
-soi$variable<-as.intiger(soi$variable)
+soi$variable<-as.integer(soi$variable)
 soi$Year<-as.numeric(soi$Year)
 soi$value<-as.numeric(soi$value)
 # Change names
@@ -78,11 +81,7 @@ ninoyr$Month = as.numeric(ninoyr$Month)
 ninoyr<- dcast(ninoyr, Year + Month~...)
 colnames(ninoyr) <- c('Year', 'Month', 'ENSO')
 # For this dataset, +1 = El Nino month, -1 = La Nina month. -9 = N/A
-# I may make 2 different columns, one categorical column or keep as is but..
-# I am not sure how I will need to analyze this, so it will be left "as is" for now
 
-# Phew.. lets take a break before we start merging sets. 
-# If only you knew how many google tabs I have open that are along the lines of "how do you do xyz in r"
 
 # Merging
 try1 <- merge(soi,sst,by=c("Year","Month")) # Success! Now for another!
@@ -103,14 +102,19 @@ NOAAdta<-NOAAdta %>%filter(Date >= "Jul 2000" & Date <= "Jun 2009")
 # Weather data is weekly as well
 # Population is yearly
 
-# Keeping these data sets as-is unless analysis requires more conversion
+# Merging all  --------------------------------------------------------------------------------
+finaldata<-left_join(DFP, NOAAdta, by = c("Year","Month"))
+
+# Creating Weekly Incidence Rate variable so we can compare across years
+finaldata <- finaldata %>% mutate(
+  IR = Total * 1000/Estimated_population)
 
 # Save   --------------------------------------------------------------------------------
 # location to save file
-save_data_location4 <- here::here("data","processed_data","p.NOAAdta.rds")
-
-saveRDS(NOAAdta, file = save_data_location4)
-
+save_data_location1 <- here::here("data","processed_data","Finaldata.rds")
+save_data_location2 <- here::here("data","processed_data","p.NOAAdta.rds")
+saveRDS(finaldata, file = save_data_location1)
+saveRDS(NOAAdta, file = save_data_location2)
 
 
 
