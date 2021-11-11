@@ -18,37 +18,30 @@ library(ggthemes)
 library(RColorBrewer)
 library(ggplot2)
 library(table1)
+library(lubridate)
 library(tidymodels)
-
+library(forecast)  # for `auto.arima`
+library(timetk)    # for `tk_ts`
+library(zoo) 
+library(poissonreg)
+library(gam)
 #Load data
 data_spot1 <- here::here("data","processed_data","Finaldata.rds")
-
 #load data 
 FINALdta <- read_rds(data_spot1)
 ```
+# Pre-processing
 Creating Weekly Incidence Rate variable so we can compare across years
 ```{r}
+str(FINALdta)
+
 FINALdta <- FINALdta %>% mutate(
-  IR = Total * 1000/Estimated_population)
+  IR = (Total/Estimated_population)  * 100000)
+# Create a new set with only predictor variables, outcome and date
+model.data <- FINALdta[c("WeekDate", "Season", "IR", "MinAT","MaxAT", "Precip", "TAvg", "Estimated_population", "SOI", "NINO4", "NINO3.4", "ENSO")]
+
+
 ```
-#WORK IN PROGRESS
-> *Question for Dr. Handel*: I want to look at interaction between SOI, SST, Precip and ENSO (a combo of categorical, and continous).
-What would be the best way to look at this statistically? Plot residuals?
-
-# Data splitting
-Here we are going to split the data randomly into training and testing subsets
-- Training data will be used to fit the model. 75% of the model
-- Testing set will be used to evaluate the model. 15% of data
-```{r}
-# Setting a seed for random number generation so if this analysis is reproduced, the same random set will be generated
-set.seed(42) # the answer to life
-# Subsetting 3/4 of data for the 2 categories
-data_split <- initial_split(processeddta, prop = 3/4)
-# Creating training data
-train_data <- training(data_split)
-# Creating testing data
-test_data  <- testing(data_split)
-
 
 # EDA Bivariate Analysis
 ## Weather Predictors vs. Dengue IR: GLM
@@ -96,8 +89,166 @@ tidy(lm_fit3)
 #comparison of fit
 comp2_3 <- anova(lm_fit2$fit, lm_fit3$fit, test = "Chisq")
 comp2_
+```
 
 
+////////////////////////////////////////////////////////////////////////////////
+# Analysis Models
+## Data splitting
+Here we are going to split the data for testing and training models. We are looking at "seasons" instead of "years" in order to get a better understand of dengue season patterns. 
+- Training data will be used to fit the model. 2000/2001- 2008/2009 season  
+- Testing set will be used to evaluate the model. 2009/2010- 2012/2013 season
+* note that the date 2009-07-02 cuts off the 2008/2009 to the 2009/2010 season
+Source: https://www.tidymodels.org/learn/models/time-series/
+```{r}
+# Setting a seed for random number generation so if this analysis is reproduced, the same random set will be generated
+# Basic way to splitting data
+model.data$WeekDate <- as.Date(as.character(FINALdta$WeekDate))
 
+train.dta<- model.data %>%filter(WeekDate < as.Date("2009-07-02"))
+test.dta<- model.data %>%filter(WeekDate >= as.Date("2009-07-02"))
 
+# Tidy models way for time series data
+resample <- rolling_origin(
+  model.data, 
+  initial = 469, #  2009-07-02 is the 469th observation
+  assess = 52, # Because there are 52 weeks per year/season starting from start date...? wait no... its the # going into the assess bucket
+  cumulative = FALSE)
+  #lag = 14) # average time between nino event and inc in cases. I dont think I want this here for now.
+nrow(resample )
+#> 17 rows
+resample
+resample$splits[[1]]
+#<Analysis/Assess/Total>
+#<469/56/677>
+#For plotting,index each split by the first day of the assessment set:
+get_date <- function(x) {min(assessment(x)$WeekDate)}
 
+start_date <- map(resample$splits, get_date)
+resample$start_date <- do.call("c", start_date)
+head(resample$start_date)
+
+train <- training(resample)
+test <- testing(resample)
+```
+## Create a null model to compare models
+##### Creating a Null Model ####
+This is to use as a comparison for our other future models
+```{r}
+# creating model type
+glm.mod<- poisson_reg() %>%
+  set_engine("glm") %>%
+  translate()
+# Create null formula
+n.rec <- recipe(IR ~ 1., data = train.dta)  
+# Training model
+# Creating null recipe & model with TRAIN data
+# set workflow
+N.train.wflow <-
+  workflow() %>% 
+  add_model(glm.mod) %>% 
+  add_recipe(n.rec)
+# fitting
+N.train.fit <- 
+  N.train.wflow %>% 
+  fit(data = train.dta)
+# usual
+N.train.fit %>% 
+  extract_fit_parsnip() %>% 
+  tidy()
+# RMSE
+predict(N.train.fit, train.dta)
+N.train.aug <- augment(N.train.fit, train.dta)
+N.train.aug %>% select(IR, .pred) 
+N.train.aug %>% rmse(truth = IR, .pred)
+# RMSE = 2.660016		
+```
+
+## Multiple Linear Regression Model ###########################################
+Sources:
+https://www.tidymodels.org/learn/models/time-series/
+
+```{r}
+ggplot(FINALdta, aes(Season, IR)) +
+  geom_jitter(height = 0)
+
+# specifying the model using the poisson_reg() function
+pois.spec <- poisson_reg() %>% 
+  set_mode("regression") %>% 
+  set_engine("glm")
+#create dummy variable
+pois.rec <- recipe(IR ~ MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors())
+#workflow
+pois.wf <- workflow() %>% 
+  add_recipe(pois.rec) %>% 
+  add_model(pois.spec)
+
+#fit the model and look at the predictions.
+pois.fit <- pois.wf %>% fit(data = train.dta)
+pois.fit %>% extract_fit_parsnip() %>% tidy()
+
+# RMSE
+predict(pois.fit, train.dta)
+pois.aug <- augment(pois.fit, train.dta)
+pois.aug %>% select(IR, .pred) 
+pois.aug %>% rmse(truth = IR, .pred)
+# RMSE = 2.490726	
+
+# graph
+augment(pois.fit, new_data = train.dta, type.predict = "response") %>% 
+  ggplot(aes(IR, .pred)) +
+  geom_point(alpha = 0.1) +
+  geom_abline(slope = 1, size = 1, color = "grey40") +
+  labs(title = "Predicting the degue incidence rate using Poission Regression",
+       x = "Actual", y = "Predicted")
+```
+### Evaluation
+```{r}
+pois.fit.coes <- 
+  tidy(pois.fit) 
+
+pois.fit.coes %>% 
+  ggplot(aes(term, estimate)) +
+  geom_line(group = 1) +
+  geom_point(shape = 21, size = 3, stroke = 1.5, 
+             fill = "black", color = "white") +
+  labs(title = "Coefficient value from Poission Regression",
+       x = "Month", y = "Coefficient")
+
+```
+
+## GAM Model #################################################################
+source: https://m-clark.github.io/generalized-additive-models/application.html#multiple-predictors
+
+```{r}
+library(gam)
+# create model
+gam.lm <- gam(IR ~ MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta, family = poisson)
+summary(gam.lm)
+# try a smoothed as well
+gam.lm2 <- gam(IR ~ s(MinAT) + s(MaxAT) + s(NINO3.4),
+  data = train.dta, family = poisson)
+summary(gam.lm2)
+# ok try with MaxAT not smooth
+gam.lm2 <- gam(IR ~ s(MinAT) + MaxAT + s(NINO3.4),
+  data = train.dta, family = poisson)
+summary(gam.lm2)
+```
+## visualization
+```{r}
+testdata = data.frame(Income = seq(.4, 1, length = 100),
+                      Edu = mean(mod_gam2$model$Edu),
+                      Health = mean(mod_gam2$model$Health))
+fits = predict(mod_gam2, newdata=testdata, type='response', se=T)
+predicts = data.frame(testdata, fits) %>% 
+  mutate(lower = fit - 1.96*se.fit,
+         upper = fit + 1.96*se.fit)
+
+plot_mod_gam2_response = ggplot(aes(x=Income,y=fit), data=predicts) +
+  geom_ribbon(aes(ymin = lower, ymax=upper), fill='gray90') +
+  geom_line(color='#00aaff') +
+  theme_trueMinimal()
+```

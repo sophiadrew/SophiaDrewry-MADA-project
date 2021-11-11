@@ -31,6 +31,12 @@ The impact of temperature and weather patterns has been shown to affect aedes Ae
 ### ENSO and Vector Population
 Other countries such as India and Australia have been able to create predictive models, showing that a change in mean SOI values and rainfall variables are associated with either an increase or decrease of dengue incidence 3 months later [@earnest2012meteorological,@hu2010dengue].
 
+Dengue is a zoonotic disease and relies on vector dynamics, so it is important to understand the timeline between weather events and the increade or decrease in cases. 
+
+lag between the biological cycle or mosquito life-stage and the clinical symptoms, the lag between climate data and incidence data will differ. The lag is expected to be shorter for minimum temperatures that are usually associated with adult mosquito’s mortality, longer for high relative humidity, both related to adult survival and hatching. On the other side, the mean temperature is involved in all biological cycles of Ae. aegypti that take more time to influence the dengue incidence [@gharbi2011time]
+
+Lag time. SST =18 week [@brunkard2008assessing]
+
 
 # Description of data and data source
 ## NOAA Data
@@ -92,6 +98,27 @@ knitr::include_graphics("../../results/exploratoryfigures/EDAfig7.png")
 ```
 
 ## Full analysis
+The following models will be employed:
+
+  Mult Linear Regression Model
+ -  https://www.cambridge.org/core/journals/epidemiology-and-infection/article/meteorological-factors-and-el-nino-southern-oscillation-are-independently-associated-with-dengue-infections/135B999689FC13AACDDF8B54EDB8DE93
+ 
+ 
+  SARIMA, good for time series data
+  - https://bmcinfectdis.biomedcentral.com/articles/10.1186/1471-2334-11-166 [@gharbi2011time]
+  - https://pubmed.ncbi.nlm.nih.gov/19819860/
+  
+  
+  GAM model
+  - https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0195065
+  
+  Poisson regression model
+  - https://www.tandfonline.com/doi/abs/10.1080/09603123.2011.572279
+  
+  Here is a convenient lit review on models used 
+  https://bmcinfectdis.biomedcentral.com/articles/10.1186/1471-2334-14-167
+  
+  * Poisson distribution. I am see autoregressive parememters to account for the lag
 
 # Discussion
 
