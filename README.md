@@ -6,7 +6,7 @@ This is the landing page for my fall 2021 MADA Class Project.
 I am looking to see if the El Niño and La Niña weather phenomena can be used as a predictor of arboviral disease transmission, specifically dengue in Iquitos, Peru. 
 
 # For Dr. Handel
-Here is where the work for each project "part" can be found. Also included a little recap of what was done or previous files that were edited. Data analysis is a cyclical process after all! Updated 10/26
+Here is where the work for each project "part" can be found. Also included a little recap of what was done or previous files that were edited. Data analysis is a cyclical process after all! Updated 11/12
 - Part 1: Project proposal found in `Proposal`
 - Part 2: Data cleaning/processing found in Code/processing_code/`processingscript.R` & `processingscript2.R`
           EDA found in Code/analysis_code/`exploratoryscript`
@@ -14,7 +14,7 @@ Here is where the work for each project "part" can be found. Also included a lit
 - Part 3: Decided to merge all data files after all in `processingscript.R` & `processingscript2.R` (There was a good bit done here. I             kept both Final merged data file as well as cleaned individual file because in the EDA, I did a small analysis of each data              set) 
           Added EDA models found in `exploratoryscript.Rmd`This was done on merged final data set. I also changed it from .R to .Rmd file
           Manuscript updated in Products/`manuscript`, added citations and figures
-- Part 4:
+- Part 4:Manuscript updated in Products/`manuscript`. `processingscript2.R` updated as well with Poisson regression model, SARIMA, GAM and  LASSO model. I am a little ong on subsetting data and turning into a non time series 
 - Part 5:
 
 # Template structure

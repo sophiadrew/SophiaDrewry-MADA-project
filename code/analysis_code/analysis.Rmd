@@ -35,65 +35,11 @@ Creating Weekly Incidence Rate variable so we can compare across years
 ```{r}
 str(FINALdta)
 
-FINALdta <- FINALdta %>% mutate(
-  IR = (Total/Estimated_population)  * 100000)
+FINALdta <- FINALdta %>% mutate(IR = (Total/Estimated_population)  * 100000)
 # Create a new set with only predictor variables, outcome and date
 model.data <- FINALdta[c("WeekDate", "Season", "IR", "MinAT","MaxAT", "Precip", "TAvg", "Estimated_population", "SOI", "NINO4", "NINO3.4", "ENSO")]
 
-
 ```
-
-# EDA Bivariate Analysis
-## Weather Predictors vs. Dengue IR: GLM
-Weather predictors are as follows:
-  From station data
-- MIN & MAT Air Temp (min) /// cont.
-- Precipitation /// cont.
-- Average Temp /// cont.
-  From NOAA
-- ENSO // categorical
-- SOI /// cont.
-- SST (region 3.4) /// cont.
-
-
-
-## Looking at Station data predictors
-```{r}
-# Setting engine as LM because all are continous
-glm_mod <- linear_reg() %>% 
-  set_engine("glm")
-# Setting recipe
-# In EDA, I determined Min AT was best predictor, but we will throw in Max AT for fun
-weather.rec<- recipe(IR ~ MinAT + MaxAT + Precip + TAvg, data = FINALdta)
-
-weather.wflow <- 
-  workflow() %>% 
-  add_model(glm_mod) %>% 
-  add_recipe(weather.rec)
-nausea.wflow
-
-#view summary of fit
-tidy(lm_fit1)
-```
-
-# linear regression for one predictor, one outcome
-```{r}
-#predict particles per liter based on population
-lm_fit2 <- lm_mod %>% fit(particles_l ~ population, data = data)
-#view summary of fit
-tidy(lm_fit2)
-#predict particles per liter based on e coli
-lm_fit3 <- lm_mod %>% fit(particles_l ~ e.coli.cfu, data = data)
-#view summary of fit
-tidy(lm_fit3)
-#comparison of fit
-comp2_3 <- anova(lm_fit2$fit, lm_fit3$fit, test = "Chisq")
-comp2_
-```
-
-
-////////////////////////////////////////////////////////////////////////////////
-# Analysis Models
 ## Data splitting
 Here we are going to split the data for testing and training models. We are looking at "seasons" instead of "years" in order to get a better understand of dengue season patterns. 
 - Training data will be used to fit the model. 2000/2001- 2008/2009 season  
@@ -109,10 +55,11 @@ train.dta<- model.data %>%filter(WeekDate < as.Date("2009-07-02"))
 test.dta<- model.data %>%filter(WeekDate >= as.Date("2009-07-02"))
 
 # Tidy models way for time series data
+# used in ARIMA tutorial, using a copy set to preserve data set for future models
 resample <- rolling_origin(
   model.data, 
   initial = 469, #  2009-07-02 is the 469th observation
-  assess = 52, # Because there are 52 weeks per year/season starting from start date...? wait no... its the # going into the assess bucket
+  assess = 52, # Because there are 52 weeks per year/season starting from start date...?t
   cumulative = FALSE)
   #lag = 14) # average time between nino event and inc in cases. I dont think I want this here for now.
 nrow(resample )
@@ -121,16 +68,61 @@ resample
 resample$splits[[1]]
 #<Analysis/Assess/Total>
 #<469/56/677>
+```
 #For plotting,index each split by the first day of the assessment set:
-get_date <- function(x) {min(assessment(x)$WeekDate)}
-
+get_date <- function(x) {min(assessment(x))}
 start_date <- map(resample$splits, get_date)
 resample$start_date <- do.call("c", start_date)
 head(resample$start_date)
 
-train <- training(resample)
-test <- testing(resample)
+# EDA Modeling
+## Weather Predictors vs. Dengue IR
+Weather predictors are as follows:
+  From station data
+- MIN & MAT Air Temp (min) /// cont.
+- Precipitation /// cont.
+- Average Temp /// cont.
+  From NOAA
+- ENSO // categorical
+- SOI /// cont.
+- SST (region 3.4) /// cont.
+
+
+## Looking at Station data predictors
+```{r}
+# Setting engine as LM because all are continuous
+glm.mod <- linear_reg() %>% 
+  set_engine("lm") %>%
+  set_mode("regression")
+# Setting recipe
+weather.rec<- recipe(IR ~ MinAT + MaxAT + Precip + TAvg, data = train.dta)
+# workflow
+weather.wflow <- 
+  workflow() %>% 
+  add_model(glm.mod) %>% 
+  add_recipe(weather.rec)
+weather.wflow
+# fitting data
+weather.fit <- 
+  weather.wflow %>% 
+  fit(data = FINALdta)
+weather.fit
+# To view a tibble 
+weather.fit %>% extract_fit_parsnip() %>% tidy()
 ```
+## Evaluation
+```{r}
+predict(weather.fit, train.dta)
+# So we are going to "augment" the test data function to show the predictors individually
+weather.aug <- augment(weather.fit, train.dta)
+weather.aug %>% select(IR, .pred) 
+```
+
+
+////////////////////////////////////////////////////////////////////////////////
+# Analysis Models
+
+
 ## Create a null model to compare models
 ##### Creating a Null Model ####
 This is to use as a comparison for our other future models
@@ -169,6 +161,7 @@ Sources:
 https://www.tidymodels.org/learn/models/time-series/
 
 ```{r}
+# to get a look at seasonal variation
 ggplot(FINALdta, aes(Season, IR)) +
   geom_jitter(height = 0)
 
@@ -223,25 +216,33 @@ pois.fit.coes %>%
 source: https://m-clark.github.io/generalized-additive-models/application.html#multiple-predictors
 
 ```{r}
-library(gam)
 # create model
 gam.lm <- gam(IR ~ MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
   data = train.dta, family = poisson)
-summary(gam.lm)
+summary(gam.lm) #taking out estimated population because that is included in IR. Another option would be to look at case counts and include population as a predictor
+gam.lm2 <- gam(IR ~ MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta, family = poisson)
+summary(gam.lm2)
+# 4 predictors stand out, in order of strongest as follows:
+# MinAT, MaxAT, SOI and ENSO
+```
+Now lets try a couple more using those 
+```{r}
 # try a smoothed as well
-gam.lm2 <- gam(IR ~ s(MinAT) + s(MaxAT) + s(NINO3.4),
-  data = train.dta, family = poisson)
-summary(gam.lm2)
+gam.lm3 <- gam(IR ~ s(MinAT) + s(MaxAT) + (SOI) + (ENSO), # can only smooth 3 variables
+  data = train.dta, family = poisson) 
+summary(gam.lm3) #Enso performed better than expects
 # ok try with MaxAT not smooth
-gam.lm2 <- gam(IR ~ s(MinAT) + MaxAT + s(NINO3.4),
+gam.lm4 <- gam(IR ~ s(MinAT) + MaxAT + s(NINO3.4),
   data = train.dta, family = poisson)
-summary(gam.lm2)
+summary(gam.lm4) # MaxAT is almost 0 even not smoothed
+# getting error messages because the IR is a non-integer
 ```
 ## visualization
 ```{r}
-testdata = data.frame(Income = seq(.4, 1, length = 100),
-                      Edu = mean(mod_gam2$model$Edu),
-                      Health = mean(mod_gam2$model$Health))
+testdata = data.frame(MinAT = seq(.4, 1, length = 100),
+                      SOI = mean(mod_gam2$model$Edu),
+                      ENSO = mean(mod_gam2$model$Health))
 fits = predict(mod_gam2, newdata=testdata, type='response', se=T)
 predicts = data.frame(testdata, fits) %>% 
   mutate(lower = fit - 1.96*se.fit,
@@ -251,4 +252,29 @@ plot_mod_gam2_response = ggplot(aes(x=Income,y=fit), data=predicts) +
   geom_ribbon(aes(ymin = lower, ymax=upper), fill='gray90') +
   geom_line(color='#00aaff') +
   theme_trueMinimal()
+```
+
+## ARIMA #################################################################
+source:https://www.tidymodels.org/learn/models/time-series/
+```{r}
+# a little but of pre processing
+# this code is from tidymodel tutorial, creating model and starting it on specified date
+fit_model <- function(x, ...) {x %>%
+    analysis() %>%
+    tk_ts(start = .$date[[1]] %>% as.yearmon(), 
+          frequency = 12, 
+          silent = TRUE) %>%
+    auto.arima(...)}
+#Save each model in a new column:
+# but first making a copy of model data for future models
+```
+
+```{r}
+get_date <- function(x) {
+  min(assessment(x)$StartDate)}
+
+start_date <- map(resample$splits, get_date)
+resample$start_date <- do.call("c", start_date)
+head(roll_rs$start_date)
+resample$arima <- map(resample$splits, fit_model)
 ```
