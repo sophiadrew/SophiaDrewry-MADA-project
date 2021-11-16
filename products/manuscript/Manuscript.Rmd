@@ -65,18 +65,13 @@ SOI values follow do not follow an obvious pattern of either region 4 and 3.4 SS
 ```{r EDAfig3,  fig.cap='EDAfig3.', echo=FALSE}
 knitr::include_graphics("../../results/exploratoryfigures/EDAfig3.png")
 ```
-After running a General Linear Model, region 3.4 was choosen for the final model as it is the best predictor of dengue cases. 
-```{r EAM1,  echo=FALSE}
-#resulttable=readRDS("../../results/exploratoryfigures/EAM1.Rds")
-#knitr::kable(table1, caption = 'GLM: Total dengue vs. SST from 3.4 & 4')
-```
 
 Figure \@ref(fig:EDAfig4) is a visualization of El Niño and La Niña occurrences. ENSO values coded red are El Niño and values coded blue are La Niña. These are the official classifications done by NOAA using various climate indicies and are not as sensitive of an indicator.
 ```{r EDAfig4,  fig.cap='EDAfig4.', echo=FALSE}
 knitr::include_graphics("../../results/exploratoryfigures/EDAfig4.png")
 ```
 
-Dengue incidence in Iquitos Peru is represented in the following 3 graphs. Since all cases are reported via labortory testing, serotyping can be done. Figure
+Dengue incidence in Iquitos Peru is represented in the following 3 graphs. Since all cases are reported via laboratory testing, serotyping can be done. Figure
  \@ref(fig:EDAfig6) show this distribution. Note the introduction of DENV-4 around 2008. 
 ```{r EDAfig6,  fig.cap='EDAfig6', echo=FALSE}
 knitr::include_graphics("../../results/exploratoryfigures/EDAfig6.png")

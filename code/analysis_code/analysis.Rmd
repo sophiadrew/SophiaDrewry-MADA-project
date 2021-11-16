@@ -35,9 +35,9 @@ Creating Weekly Incidence Rate variable
 ```{r}
 # Creating Weekly Incidence Rate variable so we can compare across years
 str(FINALdta)
-FINALdta <- FINALdta %>% mutate(IR = (Total/Estimated_population)  * 100000)
+FINALdta <- FINALdta %>% mutate(IR = (Total/Estimated_population)  * 100000) # I will be using case counts as outcome for Poisson regression/ dist
 FINALdta$WeekDate <- as.Date(as.character(FINALdta$WeekDate))
-# From EDA we could see that case counts do not follow a normal distribution 
+# From EDA we could see that case counts do not follow a normal distribution, but I dont think I need to log these in poisson dist
 FINALdta2 <- FINALdta
 FINALdta2$Total <- log(FINALdta2$Total)
 hist(FINALdta$Total,col='red')
@@ -45,7 +45,7 @@ hist(FINALdta2$Total,col='red')
 # Based off the information from this graph, I want to set a natural log of IR for our model dataset
 # Create a new set with only predictor variables, outcome and date
 model.data <- FINALdta[c("WeekDate", "Season", "IR", "Total", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
-ts.dta <- FINALdta[c("Year", "Month", "IR","MaxAT", "Precip", "TAvg", "NINO4", "SOI", "NINO3.4", "ENSO")]
+ts.dta <- FINALdta[c("Year", "Month", "IR","MinAT","MaxAT", "Precip", "TAvg", "NINO4", "NINO3.4", "ENSO")]
 ```
 ##  Adjusting for Seasonality
 source: https://rpubs.com/davoodastaraky/TSA1
@@ -53,8 +53,9 @@ Here we are going to run some quick bivariate comparisons between dengue case nu
 More importantly we are looking at graphical patterns to determine lag period 
 ```{r}
 # Transforming into a time series 
-adj <- ts(ts.dta, start=c(2000, 7), end=c(2013, 6), frequency=12)
+adj <- ts(ts.dta, start=c(2000, 7), end=c(2013, 6), frequency=52)
 plot.ts(adj)
+# another wat
 # looking at seasonal decomposition, multiplicative effects
 # Decomposing Seasonal Data
 data.comp <- decompose(adj)
@@ -62,6 +63,12 @@ data.comp # cannot use plot function because there are more than 10 predictors
 # now lets look at each predictor adjusted
 adj.model <- adj - data.comp$seasonal
 plot.ts(adj.model)
+```
+
+```{r}
+adj.model %>%  glm(adj.IR ~ adj.MinAT + adj.MaxAT + adj.Precip + adj.TAvg + adj.SOI + adj.NINO4 + adj.NINO3.4 + adj.ENSO, family=poisson) 
+e <- adj.model %$% glm(IR ~ MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO)$residuals
+
 ```
 
 ## Data splitting
@@ -132,6 +139,7 @@ weather.fit
 # To view a tibble 
 weather.fit %>% extract_fit_parsnip() %>% tidy( )
 ```
+
 ## Evaluation
 ```{r}
 predict(weather.fit, train.dta)
@@ -181,6 +189,7 @@ N.train.aug %>% rmse(truth = IR, .pred)
 ## Multiple Linear Regression Model ###########################################
 Sources:
 https://www.tidymodels.org/learn/models/time-series/
+MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO
 
 ```{r}
 # to get a look at seasonal variation
@@ -239,7 +248,7 @@ source: https://m-clark.github.io/generalized-additive-models/application.html#m
 
 ```{r}
 # create model
-gam.lm <- gam(IR ~ MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
+gam.lm <- gam(IR ~ lag(IR) MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
   data = train.dta, family = poisson)
 summary(gam.lm) #taking out estimated population because that is included in IR. Another option would be to look at case counts and include population as a predictor
 gam.lm2 <- gam(IR ~ MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
@@ -278,7 +287,44 @@ plot_mod_gam2_response = ggplot(aes(x=Income,y=fit), data=predicts) +
 
 ## SARIMA #################################################################
 source:https://www.tidymodels.org/learn/models/time-series/
+MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO
 ```{r}
+resample <- rolling_origin(adj.model, 
+  initial = 469, #  2009-07-02 is the 469th observation
+  assess = 52, # Because there are 52 weeks per year/season starting from start date...?t
+  cumulative = FALSE)
+  #lag = 14) # average time between nino event and inc in cases. I don't think I want this here for now.
+nrow(resample )
+#> 17 rows
+resample$splits[[1]]
+#<Analysis/Assess/Total>
+#<469/56/677>
+
+fit_model <- function(x, ...) {x %>%
+    analysis() %>%
+    auto.arima(...)}
+resample$arima <- map(resample$splits, fit_model)
+# stuck bc srima is univariate
+
+SAMRIA1 <- cbind(
+    AdLag0 = ts.dta[,"IR"],
+    AdLag1 = stats::lag(ts.dta[,"IR"],-1),
+    AdLag2 = stats::lag(ts.dta[,"IR"],-2),
+    AdLag3 = stats::lag(ts.dta[,"IR"],-3)) %>%
+  head(NROW(IR))
+
+fit1 <- auto.arima(ts.dta[4:40,1], xreg=SAMRIA1[4:40,1],
+  stationary=TRUE)
+fit2 <- auto.arima(ts.dta[4:40,1], xreg=SAMRIA1[4:40,1:2],
+  stationary=TRUE)
+fit3 <- auto.arima(ts.dta[4:40,1], xreg=SAMRIA1[4:40,1:3],
+  stationary=TRUE)
+fit4 <- auto.arima(ts.dta[4:40,1], xreg=SAMRIA1[4:40,1:4],
+  stationary=TRUE)
+
+c(fit1[["aicc"]],fit2[["aicc"]],fit3[["aicc"]],fit4[["aicc"]])
+
+
 lag.plot(model.data,lags=12,do.lines=FALSE)
 
 ts.train = ts(train.dta)
@@ -300,17 +346,12 @@ abline(0,0)
 # autocorrelation plot
 acf(cases.lm.resid, lag = 100, main = 'Autocorrelation of residuals')
 
-```
-# a little but of pre processing
-# this code is from tidymodel tutorial, creating model and starting it on specified date
-fit_model <- function(x, ...) {x %>%
-    analysis() %>%
-    tk_ts(start = .$date[[1]] %>% as.yearmon(), 
-          frequency = 12, 
-          silent = TRUE) %>%
-    auto.arima(...)}
-#Save each model in a new column:
-# but first making a copy of model data for future models
+lag.plot(adj.model, lags = 1, layout = NULL,
+set.lags = 1:lags, main = NULL,
+asp = 1, diag = TRUE,
+diag.col = "gray", type = "p",
+oma = NULL, ask = NULL,
+do.lines = (n <= 150))
 ```
 
 ```{r}

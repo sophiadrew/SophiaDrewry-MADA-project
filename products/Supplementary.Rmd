@@ -1,0 +1,64 @@
+---
+title: "Using El Niño Southern Oscillation (ENSO) Cycle as a Predictor for Dengue Transmission in Iquitos Peru: Supplementry figures"
+author: Sophia Drewry
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: article
+output:
+  bookdown::word_document2: 
+    toc: false
+    number_sections: true
+  bookdown::html_document2: 
+    toc: false
+bibliography: ../manuscript/references.bib
+csl: ../manuscript/apa.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file houses the supplementary material not included in the final manuscript. 
+
+## Exploratory Data Analysis
+
+
+### Weather Predictors
+After running a General Linear Model, region 3.4 was choosen for the final model as it is the best predictor of dengue cases. 
+```{r EDAfig1,  fig.cap='EDAfig1.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig1.png")
+```
+
+```{r EDAfig2,  fig.cap='EDAfig2.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig2.png")
+```
+
+```{r EAM1,  echo=FALSE}
+#resulttable=readRDS("../../results/exploratoryfigures/EAM1.Rds")
+#knitr::kable(table1, caption = 'GLM: Total dengue vs. SST from 3.4 & 4')
+```
+
+Here is a summarizing table that looks at weather by season. Here you can note the seasonality in the data and the general trend. This figure accompanies the cumulative dengue incidence by season. 
+```{r EDAfig10,  fig.cap='EDAfig10.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig10.png")
+```
+### Dengue Distribution
+
+### Bivariate Interaction between Dengue Distribution and Weather Predictors
+```{r EDAfig8,  fig.cap='EDAfig8.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig8.png")
+```
+
+```{r EDAfig9,  fig.cap='EDAfig9.', echo=FALSE}
+knitr::include_graphics("../../results/exploratoryfigures/EDAfig9.png")
+```
+
+## Modeling Figures and Rationale
+
+### Null Model
+### Model #1:
+### Model #2:
+### Model #3:
+
+### Model Evaluation
+
