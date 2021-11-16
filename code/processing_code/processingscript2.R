@@ -41,7 +41,7 @@ DFP <- read_rds(data_spot7)
 dplyr::glimpse(soi)
 # Ok we need to make this in long data form so we will be able to merge with other data sets
 tail(soi)
-soi<- soi[-c(70:80), ] # First lets get rid of the last 10 rows  
+soi<- soi[-c(70:80), ] # First lets get rid of the last 10 rows because they contain data from the future and are in different formats
 # Renaming columns
 colnames(soi) <- c('Year','1', '2','3','4','5','6','7','8','9','10','11','12')
 # Now we convert to long format
@@ -93,8 +93,6 @@ NOAAdta$Month <- as.numeric(NOAAdta$Month)
 NOAAdta$Date <- as.yearmon(paste(NOAAdta$Year, NOAAdta$Month), "%Y %m")
 #Put in order by year then month
 NOAAdta<-NOAAdta[order(NOAAdta$Date), ]
-# Manage data length to match dengue data
-NOAAdta<-NOAAdta %>%filter(Date >= "Jul 2000" & Date <= "Jun 2009")
 
 # Data summary
 # NOAAdta (SOI, SST & ENSO) data are all monthly
@@ -107,7 +105,7 @@ finaldata<-left_join(DFP, NOAAdta, by = c("Year","Month"))
 
 # Creating Weekly Incidence Rate variable so we can compare across years
 finaldata <- finaldata %>% mutate(
-  IR = Total * 1000/Estimated_population)
+  IR = Total * 100000/Estimated_population)
 
 # Save   --------------------------------------------------------------------------------
 # location to save file

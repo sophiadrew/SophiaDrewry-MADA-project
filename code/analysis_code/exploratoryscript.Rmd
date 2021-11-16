@@ -1,5 +1,5 @@
 ---
-title: "Explatory Data Analysis"
+title: "Exploratory Data Analysis"
 author: "Sophia Drewry"
 date: "10/27/2021"
 output: html_document
@@ -96,7 +96,7 @@ NP4 <- ggplot(NOAAdta, aes(x=Month, y=Year)) +
   geom_tile(color = "white",
             lwd = 1.5,
             linetype = 1, aes(fill = ENSO)) +
-  labs(title = "El Nino/La Nino Occurance", y = "Year") +
+  labs(title = "El Nino/La Nina Occurance", y = "Year") +
   coord_fixed() +
   theme_minimal() +
   scale_fill_gradient2(low = "#205EAC", mid = "#d3d3d3", high = "#AE2033")
@@ -181,42 +181,59 @@ Table1
 Table1 = here("results","exploratoryfigures", "Table1.RDS")
 saveRDS(Table1, file = Table1)
 ```
+
 ##############################################################################################  
 
 
 # EDA With FINALdta --------------------------------------------------------------------------------
 Some more visualization across datasets
+```{r}
+# Dengue Incidence Rate vs. Average Temperature
+CP1 <- FINALdta %>% 
+  ggplot(aes(x = IR, y = TAvg)) + 
+  geom_point() + labs(title = "Dengue Incidence Rate vs. Average Temperature", x = "Incidence Rate per 100,000", y = "Average Temperature") +
+  theme_minimal() +
+  scale_color_ptol("")
+plot(CP1)
+ggsave(filename = here("results", "exploratoryfigures", "EDAfig8.png"), plot = CP1)
 
-CP1 = ggplot(FINALdta, aes(x = WeekDate), col = group) + 
-  geom_line(data = FINALdta, aes(x = WeekDate, y = Total, color="Dengue Cases")) +
-  geom_col(data = FINALdta, aes(x = WeekDate, y = Precip, color="Precipitation")) +
-  scale_y_continuous(sec.axis = sec_axis(), name="SOI") +
-  xlab("Dates") +
-  ylab("Weather Variables") +
-  theme_wsj() +
-  scale_fill_wsj(palette = "colors6") +
-  ggtitle("Weather Variables and Dengue Cases")
-print(CP1)
+# Dengue Incidence Rate vs. Precip
+CP2 <- FINALdta %>% 
+  ggplot(aes(x = IR, y = Precip)) + 
+  geom_point() + labs(title = "Dengue Incidence Rate vs. Precip", x = "Incidence Rate per 100,000", y = "Precip") +
+  theme_minimal() +
+  scale_color_ptol("")
+plot(CP2)
+ggsave(filename = here("results", "exploratoryfigures", "EDAfig9.png"), plot = CP2)
 
-  geom_line(data = FINALdta, aes(x = WeekDate, y = MaxAT + coeff, color = "Average Temp")) +
-  geom_line(data = FINALdta, aes(x = WeekDate, y = MinAT + coeff, color = "Average Temp")) +
-  
-  scale_y_continuous(sec.axis = sec_axis(), name="SOI") +
-  ggtitle("Weather Variables and Dengue Cases")
-print(CP1)
-Figure3 <- here("results", "exploratoryfigures", "EDAfig3.png")
-ggsave(filename = Figure3, plot = NP3)
+# Weather data by Season
+CP3 <- ggplot(FINALdta, aes(x, y), col = group) + 
+    geom_line(data = FINALdta, aes(x = SeasonWk, y = MinAT, color = "Min Air Temp")) +
+    geom_line(data = FINALdta, aes(x = SeasonWk, y = MaxAT, color = "Max Air Temp")) +
+    geom_line(data = FINALdta, aes(x = SeasonWk, y = TAvg, color = "Average Temperature")) +
+    geom_col(data = FINALdta, aes(x = SeasonWk, y = Precip, color = "Precipitation")) +
+    scale_y_continuous(sec.axis = sec_axis(~.), name="Celcuis") +
+    facet_wrap( ~ Season, ncol = 3) +
+    xlab("Week") +
+    ylab("Centimeters") +
+    ggtitle("Weather Data by Week in Iquitos, Peru: Stratified by Month") +
+    theme_minimal() +
+    scale_color_ptol("")
+print(CP3)
+ggsave(filename = here("results", "exploratoryfigures", "EDAfig10.png"), plot = CP3)
 
+```
 We have a couple ambiguous predictors such as SST region and Min and Max AT
 ## Choosing what SST NINO region (3.4 or 4) is the best predictor for Dengue IR
 Running quick LM to determine which is a better predictor of IR. Both continuous variables
+We will put both in the model
 ```{r}
 # model 1: Total dengue vs. SST from 3.4
 D3.4 <- lm(IR ~ NINO3.4, data = FINALdta)
 # model 2: Total dengue vs. SST from 4
 D4 <- lm(IR ~  NINO4, data = FINALdta)
 # Compare both
-anova(D3.4, D4) #Not usre if I should look at them seperatly in each model or run them together
+anova(D3.4, D4) #Not sure if I should look at them separately in each model or run them together
 
 # Model 3: Total dengue vs. SST from 3.4 & 4 
 Dboth <- glm(IR ~ NINO4 + NINO3.4, data = FINALdta)
@@ -243,5 +260,7 @@ anova(MAXat, MINat) #Not sure if I should look at them separately in each model 
 ATboth <- glm(IR ~ MaxAT + MinAT, data = FINALdta)
 summary(ATboth)
 ```
+
+
 
 Both variables look pretty good. Min seems to perform better but it may be worth including both in the model

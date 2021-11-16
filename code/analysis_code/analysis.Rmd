@@ -31,15 +31,39 @@ data_spot1 <- here::here("data","processed_data","Finaldata.rds")
 FINALdta <- read_rds(data_spot1)
 ```
 # Pre-processing
-Creating Weekly Incidence Rate variable so we can compare across years
+Creating Weekly Incidence Rate variable
 ```{r}
+# Creating Weekly Incidence Rate variable so we can compare across years
 str(FINALdta)
-
 FINALdta <- FINALdta %>% mutate(IR = (Total/Estimated_population)  * 100000)
+FINALdta$WeekDate <- as.Date(as.character(FINALdta$WeekDate))
+# From EDA we could see that case counts do not follow a normal distribution 
+FINALdta2 <- FINALdta
+FINALdta2$Total <- log(FINALdta2$Total)
+hist(FINALdta$Total,col='red')
+hist(FINALdta2$Total,col='red')
+# Based off the information from this graph, I want to set a natural log of IR for our model dataset
 # Create a new set with only predictor variables, outcome and date
-model.data <- FINALdta[c("WeekDate", "Season", "IR", "MinAT","MaxAT", "Precip", "TAvg", "Estimated_population", "SOI", "NINO4", "NINO3.4", "ENSO")]
-
+model.data <- FINALdta[c("WeekDate", "Season", "IR", "Total", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
+ts.dta <- FINALdta[c("Year", "Month", "IR","MaxAT", "Precip", "TAvg", "NINO4", "SOI", "NINO3.4", "ENSO")]
 ```
+##  Adjusting for Seasonality
+source: https://rpubs.com/davoodastaraky/TSA1
+Here we are going to run some quick bivariate comparisons between dengue case numbers
+More importantly we are looking at graphical patterns to determine lag period 
+```{r}
+# Transforming into a time series 
+adj <- ts(ts.dta, start=c(2000, 7), end=c(2013, 6), frequency=12)
+plot.ts(adj)
+# looking at seasonal decomposition, multiplicative effects
+# Decomposing Seasonal Data
+data.comp <- decompose(adj)
+data.comp # cannot use plot function because there are more than 10 predictors
+# now lets look at each predictor adjusted
+adj.model <- adj - data.comp$seasonal
+plot.ts(adj.model)
+```
+
 ## Data splitting
 Here we are going to split the data for testing and training models. We are looking at "seasons" instead of "years" in order to get a better understand of dengue season patterns. 
 - Training data will be used to fit the model. 2000/2001- 2008/2009 season  
@@ -49,8 +73,6 @@ Source: https://www.tidymodels.org/learn/models/time-series/
 ```{r}
 # Setting a seed for random number generation so if this analysis is reproduced, the same random set will be generated
 # Basic way to splitting data
-model.data$WeekDate <- as.Date(as.character(FINALdta$WeekDate))
-
 train.dta<- model.data %>%filter(WeekDate < as.Date("2009-07-02"))
 test.dta<- model.data %>%filter(WeekDate >= as.Date("2009-07-02"))
 
@@ -61,7 +83,7 @@ resample <- rolling_origin(
   initial = 469, #  2009-07-02 is the 469th observation
   assess = 52, # Because there are 52 weeks per year/season starting from start date...?t
   cumulative = FALSE)
-  #lag = 14) # average time between nino event and inc in cases. I dont think I want this here for now.
+  #lag = 14) # average time between nino event and inc in cases. I don't think I want this here for now.
 nrow(resample )
 #> 17 rows
 resample
@@ -69,7 +91,7 @@ resample$splits[[1]]
 #<Analysis/Assess/Total>
 #<469/56/677>
 ```
-#For plotting,index each split by the first day of the assessment set:
+For plotting,index each split by the first day of the assessment set. Not sure if I need to do this anymore... if we are offsetting. 
 get_date <- function(x) {min(assessment(x))}
 start_date <- map(resample$splits, get_date)
 resample$start_date <- do.call("c", start_date)
@@ -92,7 +114,7 @@ Weather predictors are as follows:
 ```{r}
 # Setting engine as LM because all are continuous
 glm.mod <- linear_reg() %>% 
-  set_engine("lm") %>%
+ set_engine("lm") %>%
   set_mode("regression")
 # Setting recipe
 weather.rec<- recipe(IR ~ MinAT + MaxAT + Precip + TAvg, data = train.dta)
@@ -108,7 +130,7 @@ weather.fit <-
   fit(data = FINALdta)
 weather.fit
 # To view a tibble 
-weather.fit %>% extract_fit_parsnip() %>% tidy()
+weather.fit %>% extract_fit_parsnip() %>% tidy( )
 ```
 ## Evaluation
 ```{r}
@@ -170,7 +192,7 @@ pois.spec <- poisson_reg() %>%
   set_mode("regression") %>% 
   set_engine("glm")
 #create dummy variable
-pois.rec <- recipe(IR ~ MinAT + MaxAT + Precip + TAvg + Estimated_population + SOI + NINO4 + NINO3.4 + ENSO,
+pois.rec <- recipe(IR ~ MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
   data = train.dta) %>% 
   step_dummy(all_nominal_predictors())
 #workflow
@@ -254,9 +276,31 @@ plot_mod_gam2_response = ggplot(aes(x=Income,y=fit), data=predicts) +
   theme_trueMinimal()
 ```
 
-## ARIMA #################################################################
+## SARIMA #################################################################
 source:https://www.tidymodels.org/learn/models/time-series/
 ```{r}
+lag.plot(model.data,lags=12,do.lines=FALSE)
+
+ts.train = ts(train.dta)
+features = c("MinAT", "MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")
+arima_fit = auto.arima(ts.train[features])
+
+
+cases.lm = lm(log(Total + 1) ~ MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO, data = model.data)
+cases.lm.resid = resid(cases.lm)
+par(mfrow=c(1,3))
+plot(model.data$MinAT, cases.lm.resid,
+     ylab="Residuals", xlab="Min Air Temp", 
+     main="Residuals vs. Min Air Temp")
+abline(0,0)
+plot(train.dta$MaxAT, cases.lm.resid,
+     ylab="Residuals", xlab="Max Air Temp", 
+     main="Residuals vs. Max Air Temp")
+abline(0,0)
+# autocorrelation plot
+acf(cases.lm.resid, lag = 100, main = 'Autocorrelation of residuals')
+
+```
 # a little but of pre processing
 # this code is from tidymodel tutorial, creating model and starting it on specified date
 fit_model <- function(x, ...) {x %>%
