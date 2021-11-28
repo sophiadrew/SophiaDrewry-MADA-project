@@ -1,0 +1,499 @@
+---
+title: 'Analysis #1'
+author: "Sophia Drewry"
+date: "11/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Overview: 
+The goal of this analysis script is to create and fit non-time series models from quarterly averaged data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. For more background reasoning on the quarterly averaging rationale, please refer to the "ENSO and Vector Population" subsection in the 'Manuscript.Rmd' file. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. To see attempts at modeling weekly data with autoregressive models, please look at Analysis #2 script.
+
+*HYPOTHESIS: Can monthly ENSO related weather variables predict monthly dengue case load?*
+
+
+```{r}
+library(readr)
+library(dplyr) #for data processing
+library(here) #to set paths
+library(ggthemes)
+library(RColorBrewer)
+library(ggplot2)
+library(ggcorrplot)
+library(lubridate)
+library(zoo)
+library(tidymodels)
+library(glmnet)
+library(parallel)
+library(doParallel)
+library(rpart)
+library(rpart.plot) # to visualize DT plot
+library(poissonreg)
+library(MASS) # used for negative binomial regression
+library(rcompanion) # for pulling and comparing stats from different models
+library(kknn) # used for KKNN
+
+#Load data
+data_spot1 <- here::here("data","processed_data","Finaldata.rds")
+FINALdta <- read_rds(data_spot1)
+```
+
+# Pre-processing
+```{r}
+str(FINALdta)
+summary(FINALdta)
+FINALdta$WeekDate <- as.Date(as.character(FINALdta$WeekDate)) 
+# getting rid of unwanted variables: dengue serotype and other date variables
+model.data <- FINALdta[c("WeekDate", "Total", "Estimated_population", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
+
+barplot(tapply(FINALdta$Total, format(FINALdta$Month), FUN=sum)) #checking out how we want to split up the data. Traditional Jan-March will work since it is splitting up dengue peak season
+
+# Checking out any N/A, using my favorite is.na line of code to see where the NA's are in various weather data locations. 
+model.data  %>%  
+  summarise_all(list(~is.na(.)))%>%
+  pivot_longer(everything(), names_to = "variables", values_to="missing") %>%
+  count(variables, missing)
+## Only 4 found. Going to delete them because there are all on line 677
+model.data <- model.data[-c(677), ]
+```
+
+
+### Splitting into quarterly data
+As mentioned earlier, we are going to be changing this weekly time series data into quarterly.
+```{r}
+model.data$quarter = as.yearqtr(model.data$WeekDate)
+qdta <- model.data %>% group_by(quarter) %>% summarise(
+    Total = sum(Total), 
+    Pop = mean(Estimated_population),
+    MinAT = mean(MinAT),
+    MaxAT = mean(MaxAT),
+    Precip = mean(Precip),
+    TAvg = mean(TAvg),
+    SOI = mean(SOI),
+    NINO4= mean(NINO4),
+    NINO3.4= mean(NINO3.4),
+    ENSO= sum(ENSO),) # Since it will be counted via quarter, this will in itself be a new function of ENSO month events/ quarter. 
+barplot(tapply(qdta$Total, format(qdta$quarter), FUN=sum))
+
+# Creating a correlation matrix  
+A1P1tbl  <- cor(qdta[, unlist(lapply(qdta, is.numeric))])
+A1P1tbl 
+saveRDS(A1P1tbl, file = here("results","analysisfigures", "A1P1tbl.Rds"))
+
+# graphing correlation matrix  
+A1P1 <- ggcorrplot(A1P1tbl, hc.order = TRUE, outline.col = "white")
+A1P1
+ggsave(filename = here("results", "analysisfigures", "A1P1.png"), plot = A1P1 )
+# as expected, there is a correlation between weather variables. Keeping SOI values in mind
+
+```
+Covariates to keep in mind: 
+* In General, ENSO and SST (3.4 & 4). For regular regression an SST location (3.4 or 4) will be chosen to be the best predictor. SST is used in determining ENSO
+* SOI vs. ENSO, and SST 3.4 & SST 4 (- 0.8898684, -0.8202304, -0.80166581 respectively). For non variable selection models I am going to omit SOI
+* TAvg vs. TMax (0.88823464). Going to omit TAvg in general because may be to many Air Temp predictors for non variable selection models
+
+Setting data into time series form
+```{r}
+q.ts.dta  <- ts(qdta, start = c(2000), frequency = 4) # set to 4 to start the quarter
+A1P2<- plot.ts(qdta[,c(2:11)], main = "Quarterly Variable Plots") +  theme_minimal() +
+  scale_color_ptol("")  #Can only plot 10 variables with plot.ts, so I am taking out quarter
+ggsave(filename = here("results", "analysisfigures", "A1P2.png"), plot = A1P2)
+
+```
+
+Checking to see if data is normally distributed
+```{r}
+which(is.na(model.data))
+A1P3 <- hist(qdta$Total,col='red', main = "Hist: Quarterly Case Number Distribution") 
+plot(A1P3)
+A1P4 <- qqnorm(qdta$Total,col='red', main = "QQ Plot: Quarterly Case Number Distribution")
+plot(A1P4)
+# No, Dengue data is not normally distributed. Over dispersion
+png(filename = here("results", "analysisfigures", "A1P3.png"))
+png(filename = here("results", "analysisfigures", "A1P4.png"))
+
+logqdta <- log(qdta$Total)
+hist(logqdta, col='red', main = "Hist: Quarterly Case Number Distribution") 
+```
+Because data is overdispersed, going to try out both a Negative binomial regression and a Poisson regression with logged and non logged outcome
+
+### Data splitting
+Here we are going to split the data for testing and training models. 
+- Training data will be used to fit the model. 2000/2001- 2008/2009 season  
+- Testing set will be used to evaluate the model. 2009/2010- 2012/2013 season
+* note that the date 2010 cuts off the 2008/2009 to the 2009/2010 season
+Source: https://www.tidymodels.org/learn/models/time-series/
+
+```{r}
+train.dta<- qdta %>%filter(quarter < 2010)
+test.dta<- qdta %>%filter(quarter >= 2010)
+```
+
+--------------------------------------------------------------------------------
+# Modeling
+### Weather Predictors vs. Dengue Case Count
+I am keeping the dependent variable as case counts because Poisson and negative binomial distribution require count data. To offset change in population I am including it as a variable. 
+
+Weather predictors are as follows:
+  From station data
+- Population /// cont.
+- MIN & MAT Air Temp  /// cont.
+- Precipitation /// cont.
+- Average Temp /// cont.
+  From NOAA
+- ENSO // categorical
+- SOI /// cont.
+- SST (region 3.4) /// cont.
+ *See Pre-Processing section for more information on covariation* 
+
+Now we are going to make the following models
+* Null Model for comparison
+* Multiple Linear Regression Model 
+* Poisson Regression
+* Negative binomial regression
+* Decision Trees
+* LASSO
+* K Nearest Forest Model
+
+
+Since there are colinear variables, I can expect the models with variable selection will provide the best model. 
+--------------------------------------------------------------------------------
+## Null Model
+This is to use as a comparison for our other future models
+```{r}
+# creating model type
+lm.mod <- linear_reg() %>% 
+            set_engine('lm') %>% 
+            set_mode('regression')
+
+# Create null formula
+n.rec <- recipe(Total ~ 1., data = train.dta)  
+
+# Creating null recipe & model with TRAIN data
+# set workflow
+N.train.wflow <-
+  workflow() %>% 
+  add_model(lm.mod) %>% 
+  add_recipe(n.rec)
+# fitting
+N.train.fit <- 
+  N.train.wflow %>% 
+  fit(data = train.dta)
+augment(N.train.fit, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+
+# RMSE = 100.3227		
+```
+
+--------------------------------------------------------------------------------
+## Multiple Linear Regression
+Will be applying principal component analysis to address the multi-colinearity that exists between the variables.
+Source: https://juliasilge.com/blog/cocktail-recipes-umap/
+```{r}
+# creating model type
+lm.mod <- linear_reg() %>% 
+            set_engine('lm') %>% 
+            set_mode('regression')
+
+# create recipe
+mlr.rec <- recipe(Total ~ Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors()) %>% 
+  step_normalize(SOI, ENSO) %>%
+  step_pca(all_predictors()) # principal component analysis
+
+# set workflow
+mlr.train.wflow <-
+  workflow() %>% 
+  add_model(lm.mod) %>% 
+  add_recipe(mlr.rec)
+
+# fitting
+mlr.train.fit <- 
+  mlr.train.wflow %>% 
+  fit(data = train.dta)
+augment(mlr.train.fit, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+# RMSE = 93.03668	
+```
+
+
+--------------------------------------------------------------------------------
+## Poisson Regression
+Sources:
+https://poissonreg.tidymodels.org/reference/poisson_reg.html
+https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/classification.html#poisson-regression
+```{r}
+# specifying the model using the poisson_reg() function
+pois.spec <- poisson_reg() %>% 
+  set_mode("regression") %>% 
+  set_engine("glm")
+#create dummy variable
+pois.rec <- recipe(Total ~ quarter + Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors())
+#workflow
+pois.wf <- workflow() %>% 
+  add_recipe(pois.rec) %>% 
+  add_model(pois.spec)
+#fit the model and look at the predictions.
+pois.fit <- pois.wf %>% fit(data = train.dta)
+augment(pois.fit, new_data = train.dta, type.predict = "response") %>% 
+  ggplot(aes(Total, .pred)) +
+  geom_point(alpha = 0.1) +
+  geom_abline(slope = 1, size = 1, color = "grey40") +
+  labs(title = "Monthly Dengue Case numbers using Poission Regression",
+       x = "Actual", y = "Predicted")
+
+augment(pois.fit, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+
+# RMSE = 77.94448	
+```
+
+
+--------------------------------------------------------------------------------
+
+## Negative Binomial Regression
+
+Here we are going to use the MASS package because tidymodels does not have a Negative Binomial Regression option. Here we are expecting regression coefficient is not significant even though many of these variables should be highly correlated with the predictor. For this reason, I am going to run multiple models with various predictors.
+Sources:
+https://data.princeton.edu/wws509/r/overdispersion
+https://rcompanion.org/handbook/G_14.html
+
+```{r}
+# worried a bit about multicollinearity, So I am going to run a few models with and without ENSO related measures. Because of this reason vairiable selection will be important
+summary(nbr1 <- glm.nb(Total ~  Pop + Precip + TAvg + SOI + ENSO, data = train.dta, maxit = 50)) # TAvg does not perform well
+summary(nbr2 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI, data = train.dta, maxit = 50))
+summary(nbr3 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI + NINO3.4, data = train.dta, maxit = 50))
+summary(nbr4 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI + NINO4, data = train.dta, maxit = 50))
+summary(nbr5 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + NINO3.4, data = train.dta, maxit = 50))
+
+accuracy(list(nbr1, nbr2, nbr3, nbr4, nbr5),
+          plotit=TRUE, digits=3)
+```
+Looks like best model is model 2: Total ~  Pop + Precip +  MinAT + MaxAT + SOI, had an RMSE = 101	
+
+--------------------------------------------------------------------------------
+## Decision Tree Model
+
+```{r}
+folds <- vfold_cv(train.dta, v = 5, repeats = 5, strata = "Total")
+# create recipe
+dt.rec <- recipe(Total ~ Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors())
+
+## Tuning hyperparameters
+tune_spec <- 
+  decision_tree(cost_complexity = tune(), 
+  tree_depth = tune()) %>% 
+  set_engine("rpart") %>% 
+  set_mode("regression")
+tune_spec # We will come back to these parameters
+# setting workflow
+dt.wflow <- workflow() %>%
+  add_model(tune_spec) %>%
+  add_recipe(dt.rec)
+```
+
+### Tuning with a grid
+```{r}
+ncores = 4
+cl <- makePSOCKcluster(ncores)
+registerDoParallel(cl)
+# Create a grid
+dt.grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = 5)
+# tuning
+tree.res <- dt.wflow %>% 
+  tune_grid(resamples = folds, grid = dt.grid)
+tree.res %>% collect_metrics()
+stopCluster(cl)
+```
+
+
+### Plotting for the world to see
+```{r}
+tree.res %>%
+  collect_metrics() %>%
+  mutate(tree_depth = factor(tree_depth)) %>%
+  ggplot(aes(cost_complexity, mean, color = tree_depth)) +
+  geom_line(size = 1.5, alpha = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ .metric, scales = "free", nrow = 2) +
+  scale_x_log10(labels = scales::label_number()) +
+  scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
+# Looks like we have 2 deeper "trees" that perform similar in cost complexity as well, but not the best
+# Lets check out the top 5
+tree.res %>% show_best("rmse")
+# Now to pull out the best set of hyperparameter values for our decision tree model
+best.tree <- tree.res %>% select_best("rmse")
+# finalize workflow
+final.wf <- dt.wflow %>% finalize_workflow(best.tree)
+# final fit
+final.dt.fit <- final.wf %>% fit(data = train.dta) 
+final.dt.fit
+final.dt.pred <- predict(final.dt.fit, train.dta)
+tree.res %>% show_best("rmse", n = 1)
+# RMSE = 98.81927
+```
+RMSE = 1.193128	compared to Null model RMSE = 1.209 is not much of a difference
+It appears that this model found only Max and Min Air Tempertaure as predictors
+## Visualize
+```{r}
+rpart.plot(extract_fit_parsnip(final.dt.fit)$fit)
+
+```
+
+--------------------------------------------------------------------------------
+## LASSO 
+sources:
+https://www.tidymodels.org/start/case-study/
+https://stackoverflow.com/questions/66639452/tuning-a-lasso-model-and-predicting-using-tidymodels
+
+### Building model
+```{r}
+folds <- vfold_cv(train.dta, v = 5, repeats = 5, strata = "Total")
+# create recipe
+lasso.rec <- recipe(Total ~ Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors())
+# create model
+lasso.mod <- linear_reg() %>%
+  set_mode("regression") %>%           
+  set_engine("glmnet") %>%
+  set_args(penalty = tune(), mixture = 1)
+# set workflow
+lasso.wflow <- workflow() %>%
+    add_model(lasso.mod) %>%
+    add_recipe(lasso.rec)
+```
+
+### Train and tune LASSO
+```{r}
+### Setting cores
+cores <- parallel::detectCores()
+cores
+ncores = 4
+cl <- makePSOCKcluster(ncores)
+registerDoParallel(cl)
+
+# creating grid and tuning
+lr_reg_grid <- tibble(penalty = 10^seq(-3, 0, length.out = 30)) 
+
+# tuning on training data
+lasso.res <- lasso.wflow %>% 
+  tune::tune_grid(resamples = folds,
+            grid = lr_reg_grid,
+            control = control_grid(verbose = TRUE, save_pred = TRUE))
+# turn off parallel cluster
+lasso.res %>% autoplot()
+stopCluster(cl)
+```
+
+### Choosing the best performing model
+```{r}
+lasso.top.models <- lasso.res %>% select_best("rmse") 
+# finalize workflow with the best model
+best.lasso.wflow <- lasso.wflow %>% 
+  finalize_workflow(lasso.top.models)
+# fitting best performing model
+best.lasso.fit <- best.lasso.wflow %>% 
+  fit(data = train.dta)
+lasso.pred <- predict(best.lasso.fit, train.dta)
+lasso.res %>% show_best(n = 1)
+# RMSE = 113.3661	
+
+tidy(extract_fit_parsnip(best.lasso.fit)) %>% 
+  filter(estimate != 0)
+
+```
+looks like the final variables were: Pop	MinAT	MaxAT	Precip SOI NINO4 ENSO
+
+### Plotting performance
+
+```{r}
+# Variables and tuning perameters
+x <- best.lasso.fit$fit$fit$fit
+plot(x, "lambda")
+```
+
+
+--------------------------------------------------------------------------------
+## K-Nearest Neighbors
+As a general rule, k should equal sqrt of training set. In this case that is around 6
+Sources: https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/classification.html#k-nearest-neighbors
+```{r}
+# create recipe
+knn.rec <- recipe(Total ~ quarter + Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
+  data = train.dta) %>% 
+  step_dummy(all_nominal_predictors())
+
+# create model
+knn.mod <- nearest_neighbor() %>%
+  step_log(Sale_Price, base = 10) %>% 
+  set_mode("regression") %>%
+  set_engine("kknn")
+
+# set workflows for k = 1, 3 and 5
+knn.wflow <- workflow() %>% add_recipe(knn.rec)
+knn.wflow1 <- knn.wflow %>%  add_model(knn.mod %>% set_args(neighbors = 3))
+knn.wflow2 <- knn.wflow %>%  add_model(knn.mod %>% set_args(neighbors = 6))
+knn.wflow3 <- knn.wflow %>%  add_model(knn.mod %>% set_args(neighbors = 9))
+
+# fit the models
+knn.fit1 <- fit(knn.wflow1, data = train.dta)
+knn.fit2 <- fit(knn.wflow2, data = train.dta)
+knn.fit3 <- fit(knn.wflow3, data = train.dta)
+
+augment(knn.fit1, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+augment(knn.fit2, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+augment(knn.fit3, train.dta) %>% yardstick::rmse(truth = Total, .pred)
+
+# RMSE = 61.2996	
+```
+
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+# Final model
+
+Model | RMSE
+------------- | -------------
+Null  Model | 100.3227	
+Multiple Linear Regression Model | 93.03668	
+Poisson Regression | 77.94448	
+Negative binomial regression | 101
+Decision Trees | 98.81927
+LASSO | 113.3661	
+K Nearest Forest Model | 61.2996
+
+
+
+# use test data
+final.mod <- final_wf %>% last_fit(test_split) # using test data
+final.mod %>% collect_metrics()
+# residuals
+final.res <- final_fit %>%
+  augment() %>% 
+  select(.pred, BodyTemp) %>%
+  mutate(.resid = BodyTemp - .pred)
+# training vs truth
+final.pred <- ggplot(final.res, aes(x = BodyTemp, y = .pred)) + 
+  geom_point()
+final_pred_plot
+# residuals vs trth
+final_resid_plot <- ggplot(final_resid, aes(y = .resid, x = .pred)) + 
+  geom_point() 
+final_resid_plot 
+#compare to null model
+
+```
+
+
+
+
+

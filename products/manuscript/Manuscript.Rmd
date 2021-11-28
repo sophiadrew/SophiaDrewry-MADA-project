@@ -30,8 +30,9 @@ The impact of temperature and weather patterns has been shown to affect aedes Ae
 ### ENSO and Vector Population
 Other countries such as India and Australia have been able to create predictive models, showing that a change in mean SOI values and rainfall variables are associated with either an increase or decrease of dengue incidence 3 months later [@earnest2012meteorological,@hu2010dengue].
 
-Dengue is a zoonotic disease and relies on vector dynamics, so it is important to understand the timeline between weather events and the increase or decrease in cases. This "lag" between climate data and disease incidence differs depending on reqion, weather and dominant mosquito. The lag is Lower temperatures result in shorter "lag" times due to mosquito’s mortality. The inverse can be seen with higher temperatures and humidity, having longer lag times due to favoralbe breeding conditions [@gharbi2011time]. Such a lag time has been measured to be anywhere form 4 to 18 weeks [@brunkard2008assessing].
+Dengue is a zoonotic disease and relies on vector dynamics, so it is important to understand the timeline between weather events and the increase or decrease in cases. This "lag" between climate data and disease incidence differs depending on region, weather and dominant mosquito. Lower temperatures result in shorter "lag" times due to mosquito’s mortality. The inverse can be seen with higher temperatures and humidity, having longer lag times due to favorable breeding conditions [@gharbi2011time]. Such a lag time has been measured to be anywhere form 4 to 18 weeks [@brunkard2008assessing].
 
+Studies done in South America have also concluded similar lag times for weather anomalies and dengue prediction, and have ranged anywhere from 1 month to 5 months depending on season and variable [@vincenti2018enso, @stewart2013climate]. Since the ENSO cycle, both El Nina and La Nina, can affect this lag time differently  based on the 1-3 year cycles, no firm number has been found to be associated with ENSO related predictors, as discussed in greater detail in a recent paper by Dr.Stewart-Ibarra [@stewart2013climate].
 
 
 # Description of data and data source

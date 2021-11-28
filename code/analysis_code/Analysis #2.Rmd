@@ -1,0 +1,143 @@
+---
+title: "Analysis #2"
+author: "Sophia Drewry"
+date: "11/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Overview: 
+The goal of this analysis script is to create and fit time series models from weekly data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. To see attempts at modeling weekly data with autoregressive models, please look at Analysis #2 script.
+
+HYPOTHESIS: Can monthly ENSO related weather predictors predict dengue case load?
+
+load needed packages. make sure they are installed.
+```{r}
+library(readr)
+library(dplyr) #for data processing
+library(here) #to set paths
+library(ggthemes)
+library(RColorBrewer)
+library(ggplot2)
+library(reshape2)
+library(table1)
+library(lubridate)
+library(tidymodels)
+library(forecast)  # for `auto.arima`
+library(timetk)    # for `tk_ts`
+library(zoo) 
+library(poissonreg)
+library(gam)
+
+#Load data
+data_spot1 <- here::here("data","processed_data","Finaldata.rds")
+FINALdta <- read_rds(data_spot1)
+```
+# Pre-processing
+Here we are turning this data set into a time series data
+```{r}
+# Creating Weekly Incidence Rate variable so we can compare across years
+str(FINALdta)
+summary(FINALdta)
+FINALdta$WeekDate <- as.Date(as.character(FINALdta$WeekDate))
+# getting rid of unwanted variables: dengue serotype, 
+model.data <- FINALdta[c("WeekDate", "Total", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
+ts.dta <- FINALdta[c("Year", "Month", "Total","MinAT","MaxAT", "Precip", "TAvg", "NINO4", "NINO3.4", "ENSO", "SOI")]
+# setting to time series data
+ts.dta <- ts(ts.dta, start=c(2000, 7), end=c(2013, 6), frequency=52) # set to 52 because we are dealing with weekly data
+plot(ts.dta[,c(3:11)], ylab=" ")
+
+p1<- melt(model.data, id.vars = "WeekDate") %>%
+  ggplot(aes(x = WeekDate, y = value , group = 1)) +
+  geom_line() + geom_point() +
+  facet_wrap(. ~  variable) +
+  scale_color_ptol("") +
+  theme_minimal() 
+p1
+A2P1 <- here("results", "exploratoryfigures", "A2P1.png")
+ggsave(filename = Figure3, plot = p1)
+
+```
+Zero-inflated Negative Binomial Regression
+
+##  Adjusting for Seasonality
+source: https://rpubs.com/davoodastaraky/TSA1
+Here we are going to run some quick bivariate comparisons between dengue case numbers
+More importantly we are looking at graphical patterns to determine lag period 
+```{r}
+autoplot(ts.dta[,c(3:11)])
+SA.dta <- ts.dta %>% stl(s.window='periodic') %>% seasadj()
+autoplot(SA.dta)
+Box.test(ts.dta)
+```
+
+
+# Vector Autoregression (VAR) Model
+This model is appropriate because for a time series model, it can accommodate multiple variables. However from reading, it is recommended to keep the predictors small in number. This model can also set all predictors with lagged values, noted as p in the equation.
+This is done using the `vars` package
+sources: https://towardsdatascience.com/a-deep-dive-on-vector-autoregression-in-r-58767ebb3f06
+
+```{r}
+library(vars)
+library(tseries)
+fitvar1= VAR(ts.dta, p=1, type="both")
+summary(fitvar1)
+# determine some lag order
+# automatically generate the preferred lag order based on the multivariate iterations of the AIC, HQIC, SC (aka BIC), and the FPE (Akaike, Hannan-Quinn, Schwarz, and Final Prediction Error)
+lagselect <- VARselect(ts.dta, lag.max = 10, type = "const")
+# when playing around with lag.max, all 4 critera tests seem to stay around similar values
+lagselect$selection # don't seem to agree
+lagselect$criteria
+# going to go with 14 using AIC and FPR bc both choose the model that "minimizes" the predictors
+# any help in interpretation would be great
+
+VAR.m1 <- VAR(ts.dta, p = 14, type = "const", season = NULL, exog = NULL) 
+summary(VAR.m1) # focusing less on interpreting coefficients and more on residuals
+
+# testing residuals, should be non-autocorrelated.
+Serial1 <- serial.test(VAR.m1, lags.pt = 5, type = "PT.asymptotic")
+Serial1 # not sure why pval is not pulling up
+
+# testing heteroscedasticity, aka ARCH effects in TS data
+Arch1 <- arch.test(VAR.m1, lags.multi = 10, multivariate.only = TRUE)
+Arch1
+# pval is greater than 0.05, which means we cannot reject null and there is no degree of heteroscedasticity
+
+
+library(mFilter)
+library(tseries)
+library(TSstudio)
+library(forecast)
+library(tidyverse)
+
+
+```
+```{r}
+GrangerMinAT<- causality(VAR.m1, cause = "MinAT")
+GrangerMinAT
+GrangerMaxAT<- causality(VAR.m1, cause = "MaxAT")
+GrangerMaxAT
+GrangerPrecip<- causality(VAR.m1, cause = "Precip")
+GrangerPrecip
+GrangerTAvg <- causality(VAR.m1, cause = "TAvg")
+GrangerTAvg 
+GrangerSOI <- causality(VAR.m1, cause = "SOI")
+GrangerSOI 
+GrangerNINO4<- causality(VAR.m1, cause = "NINO4")
+GrangerNINO4
+GrangerNINO3.4<- causality(VAR.m1, cause = "NINO3.4")
+GrangerNINO3.4
+GrangerENSO<- causality(VAR.m1, cause = "ENSO")
+GrangerENSO
+
+
+
+
+```
+
+
+
+
+

@@ -94,6 +94,7 @@ NOAAdta$Date <- as.yearmon(paste(NOAAdta$Year, NOAAdta$Month), "%Y %m")
 #Put in order by year then month
 NOAAdta<-NOAAdta[order(NOAAdta$Date), ]
 
+
 # Data summary
 # NOAAdta (SOI, SST & ENSO) data are all monthly
 # Dengue incidence data is weekly
@@ -106,6 +107,10 @@ finaldata<-left_join(DFP, NOAAdta, by = c("Year","Month"))
 # Creating Weekly Incidence Rate variable so we can compare across years
 finaldata <- finaldata %>% mutate(
   IR = Total * 100000/Estimated_population)
+
+
+# Final Cleaning
+finaldata  %>% summarise_all(list(~is.na(.)))
 
 # Save   --------------------------------------------------------------------------------
 # location to save file

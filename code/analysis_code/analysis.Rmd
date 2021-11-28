@@ -1,15 +1,19 @@
 ---
 title: "Analysis"
 author: "Sophia Drewry"
-date: "10/28/2021"
+date: "11/29/2021"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-load needed packages. make sure they are installed.
+## Overview: 
+The goal of this analysis script is to create and fit non-time series models from quarterly averaged data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. To see attempts at modeling weekly data with autoregressive models, please look at Analysis #2 script.
 
+HYPOTHESIS: Can monthly ENSO related weather predictors predict dengue case load?
+
+load needed packages. make sure they are installed.
 ```{r}
 library(readr)
 library(dplyr) #for data processing
@@ -27,7 +31,6 @@ library(poissonreg)
 library(gam)
 #Load data
 data_spot1 <- here::here("data","processed_data","Finaldata.rds")
-#load data 
 FINALdta <- read_rds(data_spot1)
 ```
 # Pre-processing
@@ -42,7 +45,7 @@ FINALdta2 <- FINALdta
 FINALdta2$Total <- log(FINALdta2$Total)
 hist(FINALdta$Total,col='red')
 hist(FINALdta2$Total,col='red')
-# Based off the information from this graph, I want to set a natural log of IR for our model dataset
+# Based off the information from this graph, I want to set a natural log of IR for our model data set
 # Create a new set with only predictor variables, outcome and date
 model.data <- FINALdta[c("WeekDate", "Season", "IR", "Total", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
 ts.dta <- FINALdta[c("Year", "Month", "IR","MinAT","MaxAT", "Precip", "TAvg", "NINO4", "NINO3.4", "ENSO")]
@@ -158,6 +161,10 @@ weather.aug %>% select(IR, .pred)
 This is to use as a comparison for our other future models
 ```{r}
 # creating model type
+glm.mod <- linear_reg() %>% 
+  set_engine("glmnet", family = Poisson) %>%
+  set_mode("regression")
+
 glm.mod<- poisson_reg() %>%
   set_engine("glm") %>%
   translate()
@@ -231,7 +238,10 @@ augment(pois.fit, new_data = train.dta, type.predict = "response") %>%
 ### Evaluation
 ```{r}
 pois.fit.coes <- 
-  tidy(pois.fit) 
+  tidy(pois.fit) %>% 
+  filter(grepl("Quarter", term)) %>% 
+  mutate(term = stringr::str_replace(term, "Quarter", ""),
+    term = forcats::fct_inorder(term) ) 
 
 pois.fit.coes %>% 
   ggplot(aes(term, estimate)) +
@@ -240,6 +250,7 @@ pois.fit.coes %>%
              fill = "black", color = "white") +
   labs(title = "Coefficient value from Poission Regression",
        x = "Month", y = "Coefficient")
+
 
 ```
 
