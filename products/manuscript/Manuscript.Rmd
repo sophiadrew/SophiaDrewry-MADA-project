@@ -16,12 +16,11 @@ csl: ../manuscript/apa.csl
 ---
 
 
-# Summary/Abstract
 
 
 # Background
 
-Since the start of the 20th century, dengue fever and dengue hemoragic fever have caused a significant burden in many parts of the world. According to the WHO, dengue incidence has increased 30-fold in the past 50 years [@who2012global]. Environmental impacts on the breeding patterns and overall population of dengue's primary host, the aedes Aegypti mosquito can be the suspected cause of this increase incidence. Factors such as rapid urbanization, change in weather and conditions, and poor sanitation contribute to the population growth of such Aedes vectors [@medlock2015effect].
+Since the start of the 20th century, dengue fever and dengue hemorrhagic fever have caused a significant burden in many parts of the world. According to the WHO, dengue incidence has increased 30-fold in the past 50 years [@who2012global]. Environmental impacts on the breeding patterns and overall population of dengue's primary host, the aedes Aegypti mosquito can be the suspected cause of this increase incidence. Factors such as rapid urbanization, change in weather and conditions, and poor sanitation contribute to the population growth of such Aedes vectors [@medlock2015effect].
 Dengue has 4 main serotypes, all of which have been found to circulate in South America. The country of Peru has experienced intermittent dengue outbreaks, some lasting as log as 10 years[@stoddard2014long].It is also important to note that aedes Aegypti can also carry other arboviral diseases such as Zika, Chikungunya and West Nile, all of which are endemic to Peru to a smaller porportion. The city of Iquitos is conveniently located in close proximity to Nanay, Itaya, and Amazon Rivers and has a detailed dengue surveillance program set up with the Peruvian Ministry of Health and the U.S. Naval Medical Research Unit[@stoddard2014long]. Iquitos proximity to the ocean and higher altitude make this city ideal to study large scale weather phenomena on an urban level.
 The El Niño Southern Oscillation (ENSO) cycle has been shown to impact climate and ecology around the world. Its effect on infectious diseases transmission across South America has only been studied as isolated incidences or as general patterns on a limited geographic span. Climate data is important factor when studying zoonotic diseases and their geographic range[@tantalean2016arboviruses]. Waterborne and vector borne diseases usually see a spike in incidence rates when the host specie’s life cycle, habitat or breeding habits are altered, for this paper the Aedes aegypti mosquito host will be studied. The Aedes aegypti mosquito is the carrier of diseases found in south America such as dengue, Zika, West Nile virus, Chikungunya, and Venezuelan equine encephalitis (VEE) [@tantalean2016arboviruses, @vincenti2018enso]. Dengue is the most prevalent arboviral disease in south America [@vincenti2018enso]
 
@@ -37,7 +36,7 @@ Studies done in South America have also concluded similar lag times for weather 
 
 # Description of data and data source
 ## NOAA Data
-El Niño and La Niña weather phenomena is measured as a function of the Southern Oscillation Index (SOI) and Sea Surface Temperature (SST). Both negative and positive SOI & SST values coincide abnormally warm and ocean waters across the eastern tropical & southern Pacific as well as change in air pressure. Other measures of outcomes of El Niño and La Niña episodes are ocean salinity, ocean temperature, ambient temperature, rainfall. SOI, SST and ENSO data for the years of 2001-2009 is publicly available and obtained from the National Oceanic and Atmospheric Administration(NOAA)
+El Niño and La Niña weather phenomena is measured as a function of the Southern Oscillation Index (SOI) and Sea Surface Temperature (SST). Both negative and positive SOI & SST values coincide abnormally warm and ocean waters across the eastern tropical & southern Pacific as well as change in air pressure. Other measures of outcomes of El Niño and La Niña episodes are ocean salinity, ocean temperature, ambient temperature, rainfall. SOI, SST and ENSO data for the years of 2001-2009 is publicly available and obtained from the National Oceanic and Atmospheric Administration (NOAA)
 
 Our primary region of interest is 3.4, however in some cases data from region 4 is a better indicator for landfall values. For this reason, some variables will have both region 3.4 and 4 as predictors. If data from region 4 is used, it will be noted. 
 
@@ -51,7 +50,6 @@ With the data I have chosen, I am looking to see if the El Niño and La Niña we
 
 
 # Methods and Results
-
 
 ## Data import and cleaning
 Data cleaning consisted of combining all NOAA data sets into one larger set. This was done by converting all dates into numerical forms across each platform as well as adding additional week numbers. It's important to note that the dengue data sets count incidents both weekly and by the physical date. This season in which the weeks are counted are not done by traditional year (starting in Janurary) but by Peruvian dengue seasons, starting in May. For this reason I chose to join all data sets using the physical date at the beginning of each week (month-day-year). Each data set was trimmed to match the original range of the dengue data set given.
@@ -79,7 +77,7 @@ knitr::include_graphics("../../results/exploratoryfigures/EDAfig6.png")
 ```
 This table \@ref(tab:Table1) summarized the data above.
 ```{r Table1,  echo=FALSE}
-resulttable=readRDS("../../results/exploratoryfigures/Table1.RDS")
+resulttable=readRDS("../../results/exploratoryfigures/Table1.rds")
 knitr::kable(resulttable, caption = 'Table1.RDS.')
 ```
 
@@ -90,44 +88,46 @@ knitr::include_graphics("../../results/exploratoryfigures/EDAfig7.png")
 ```
 
 ## Full analysis
-The following models will be employed:
+The goal of this analysis is to create and fit non-time series models from quarterly averaged data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa as mentioned in introduction @vincenti2018enso, @stewart2013climate. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. This new quarterly averaged set answers weather or not monthly ENSO related weather variables predict monthly dengue case load.
 
-  Mult Linear Regression Model
- -  https://www.cambridge.org/core/journals/epidemiology-and-infection/article/meteorological-factors-and-el-nino-southern-oscillation-are-independently-associated-with-dengue-infections/135B999689FC13AACDDF8B54EDB8DE93
- 
- 
-  SARIMA, good for time series data
-  - https://bmcinfectdis.biomedcentral.com/articles/10.1186/1471-2334-11-166 [@gharbi2011time]
-  - https://pubmed.ncbi.nlm.nih.gov/19819860/
-  
-  
-  GAM model
-  - https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0195065
-  
-  Poisson regression model
-  - https://www.tandfonline.com/doi/abs/10.1080/09603123.2011.572279
-  
-  Here is a convenient lit review on models used 
-  https://bmcinfectdis.biomedcentral.com/articles/10.1186/1471-2334-14-167
-  
-  * Poisson distribution. I am see autoregressive parememters to account for the lag
+Before any models were implemented, an analysis of covariance was done on predictor variables. Below are the results in a heatmap form. 
+```{r A1P1.png,  fig.cap='EDAfig7', echo=FALSE}
+knitr::include_graphics("../../results/analysisfigures/A1P1.png")
+```
+
+
+In General, ENSO and SST (3.4 & 4) all had signs of covariance. This was expected as SST and SOI are all included in ENSO classification. For simple regressions, an SST location (3.4 or 4) will be chosen to be the best predictor. Both min and max air temperature interacted with average air temperature. Average air temperature was omitted for non variable selection models.
+
+Data was split into testing and training sets, with training data used to fit the 2000/2001- 2008/2009 season and testing set used to evaluate the 2009/2010-2012/2013 season. Data set was small (52 observations), but cross validation was chosen to ensure proper performance, ultimately accepting wider confidence intervals. Leave One Out (LOO) cross validation strategy was not used. While it is ideal for smaller datasets, the time series nature would not allow for enough variability in the training set to adequately predict dengue case numbers. 
+
+The primary outcome was monthly dengue case count, and used population adn various weather predictor variables such as Air Temp, Precipitation, ENSO, SOI and SST. A Multiple Linear Regression Model, Poisson Regression, Decision Trees, LASSO and K Nearest Forest Model were all done using the Tidymodels package in R. Negative binomial regression was done using the MASS package in R. Root Mean Square Error was used to compare models to null model. See the chart below for RMSE values of all models.
+
+The Multi Linear Regression Model was fitted with principal component analysis to address the multi-colinearity that exists between the variables. While no official clusters were picked up, 2 principal components described what was interpreted to be some variation of ENSO values. For the Negative Binomial Regression, the model with Population, Precipitation, min/max air temperature and SOI value performed the best. The LASSO model performed similarly, choosing the same variables as well as ENSO classification. On the contrary, the Decision Trees model only ended up choosing min and max air temperature for final variables. The K Nearest Neighbors Model was chosen for its accurate performace with smaller data sets and was the best performing model,however did not perform as well on folded data set. The coefficent *k* was chosen as 6 to avoid any overfitting. 
+
+
+Model | RMSE
+------------- | -------------
+Null  Model | 100.3227	
+Multi Linear Regression Model | 93.03668	
+Poisson Regression | 77.94448	
+Negative binomial regression | 101
+Decision Trees | 98.81927
+LASSO | 113.3661	
+K Nearest Neighbors Model | 77.7879416	
+
+## Final Model
+Ultimately the Poisson Regression model was chosen for its simplicity. Below are the final fitted results on test data. For more detail on model fitting, see the supplemental file. The final RMSE was 23.20935.
+```{r A1P2.png,  fig.cap='EDAfig7', echo=FALSE}
+knitr::include_graphics("../../results/analysisfigures/A1P2.png")
+```
+
+
 
 # Discussion
 
-## Summary and Interpretation
-_Summarize what you did, what you found and what it means._
+Ultimately the greatest weakness was the smaller sample size within the data. A more complex auto regressive model would have been able capture the variable and seasonal lag periods between variables. 
 
-## Strengths and Limitations
-_Discuss what you perceive as strengths and limitations of your analysis._
 
-## Conclusions
-_What are the main take-home messages?_
-
-_Include citations in your Rmd file using bibtex, the list of references will automatically be placed at the end_
-
-This paper [@Leek2015a] discusses types of analyses. 
-
-Note that this cited reference will show up at the end of the document, the reference formatting is determined by the CSL file specified in the YAML header. Many more style files for almost any journal [are available](https://www.zotero.org/styles). You also specify the location of your bibtex reference file in the YAML. You can call your reference file anything you like, I just used the generic word `references.bib` but giving it a more descriptive name is probably better.
 
 
 # References

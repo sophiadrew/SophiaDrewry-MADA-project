@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Overview: 
 The goal of this analysis script is to create and fit time series models from weekly data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. To see attempts at modeling weekly data with autoregressive models, please look at Analysis #2 script.
 
-HYPOTHESIS: Can monthly ENSO related weather predictors predict dengue case load?
+*HYPOTHESIS: Can weekly ENSO related weather predictors predict dengue case load?*
 
 load needed packages. make sure they are installed.
 ```{r}
@@ -38,6 +38,26 @@ FINALdta <- read_rds(data_spot1)
 # Pre-processing
 Here we are turning this data set into a time series data
 ```{r}
+FINALdta$WeekDate <- as.Date(as.character(FINALdta$WeekDate)) 
+# getting rid of unwanted variables: dengue serotype and other date variables
+model.data <- FINALdta[c("WeekDate", "Total", "Estimated_population", "MinAT","MaxAT", "Precip", "TAvg", "SOI", "NINO4", "NINO3.4", "ENSO")]
+# Checking out any N/A, using my favorite is.na line of code to see where the NA's are in various weather data locations. 
+model.data  %>%  
+  summarise_all(list(~is.na(.)))%>%
+  pivot_longer(everything(), names_to = "variables", values_to="missing") %>%
+  count(variables, missing)
+## Only 4 found. Going to delete them because there are all on line 677
+model.data <- model.data[-c(677), ]
+
+###########  Time Series ########################
+ts.dta <- FINALdta[c("Year", "Month", "Total","MinAT","MaxAT", "Precip", "TAvg", "NINO4", "NINO3.4", "ENSO", "SOI")]
+# setting to time series data
+ts.dta <- ts(ts.dta, start=c(2000, 7), end=c(2013, 6), frequency=52) # set to 52 because we are dealing with weekly data
+
+A1P2<- plot.ts(qdta[,c(2:11)], main = "Quarterly Variable Plots") +  theme_minimal() +
+  scale_color_ptol("")  #Can only plot 10 variables with plot.ts, so I am taking out quarter
+ggsave(filename = here("results", "analysisfigures", "A1P2.png"), plot = A1P2)
+
 # Creating Weekly Incidence Rate variable so we can compare across years
 str(FINALdta)
 summary(FINALdta)

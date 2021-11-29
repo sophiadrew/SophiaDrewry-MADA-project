@@ -24,6 +24,7 @@ library(RColorBrewer)
 library(ggplot2)
 library(ggcorrplot)
 library(lubridate)
+library(forcats)
 library(zoo)
 library(tidymodels)
 library(glmnet)
@@ -81,7 +82,7 @@ barplot(tapply(qdta$Total, format(qdta$quarter), FUN=sum))
 # Creating a correlation matrix  
 A1P1tbl  <- cor(qdta[, unlist(lapply(qdta, is.numeric))])
 A1P1tbl 
-saveRDS(A1P1tbl, file = here("results","analysisfigures", "A1P1tbl.Rds"))
+saveRDS(A1P1tbl, file = here("results","analysisfigures", "A1P1tbl.rds"))
 
 # graphing correlation matrix  
 A1P1 <- ggcorrplot(A1P1tbl, hc.order = TRUE, outline.col = "white")
@@ -98,9 +99,8 @@ Covariates to keep in mind:
 Setting data into time series form
 ```{r}
 q.ts.dta  <- ts(qdta, start = c(2000), frequency = 4) # set to 4 to start the quarter
-A1P2<- plot.ts(qdta[,c(2:11)], main = "Quarterly Variable Plots") +  theme_minimal() +
-  scale_color_ptol("")  #Can only plot 10 variables with plot.ts, so I am taking out quarter
-ggsave(filename = here("results", "analysisfigures", "A1P2.png"), plot = A1P2)
+A1P2 <- plot.ts(qdta[,c(2:11)], main = "Quarterly Variable Plots") +  theme_minimal()  #Can only plot 10 variables with plot.ts, so I am taking out quarter
+png(file = "results/analysisfigures/A1P2.png", width=600, height=400)
 
 ```
 
@@ -125,7 +125,6 @@ Here we are going to split the data for testing and training models.
 - Training data will be used to fit the model. 2000/2001- 2008/2009 season  
 - Testing set will be used to evaluate the model. 2009/2010- 2012/2013 season
 * note that the date 2010 cuts off the 2008/2009 to the 2009/2010 season
-Source: https://www.tidymodels.org/learn/models/time-series/
 
 ```{r}
 train.dta<- qdta %>%filter(quarter < 2010)
@@ -188,9 +187,12 @@ augment(N.train.fit, train.dta) %>% yardstick::rmse(truth = Total, .pred)
 ```
 
 --------------------------------------------------------------------------------
-## Multiple Linear Regression
+## Multiple Linear Regression with PCA
 Will be applying principal component analysis to address the multi-colinearity that exists between the variables.
-Source: https://juliasilge.com/blog/cocktail-recipes-umap/
+Source: 
+https://juliasilge.com/blog/cocktail-recipes-umap/
+https://rdrr.io/github/tidymodels/learntidymodels/f/inst/tutorials/pca_recipes/pca_recipes.Rmd
+
 ```{r}
 # creating model type
 lm.mod <- linear_reg() %>% 
@@ -202,8 +204,50 @@ mlr.rec <- recipe(Total ~ Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NI
   data = train.dta) %>% 
   step_dummy(all_nominal_predictors()) %>% 
   step_normalize(SOI, ENSO) %>%
+  step_center(all_predictors()) %>%
   step_pca(all_predictors()) # principal component analysis
+```
 
+### PCA
+```{r}
+mlr.rec # no extractions yet
+pca.prep <- prep(mlr.rec) #training
+tidy(pca.prep)
+pca.loading <- tidy(pca.prep, 4)
+
+# correlation between the principal component and the variable
+A1ML.P1<- pca.loading %>%
+  filter(component %in% paste0("PC", 1:5)) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, nrow = 1) +
+  labs(y = NULL) +
+  theme_minimal() +
+  scale_color_ptol("")
+A1ML.P1
+ggsave(filename = here("results", "analysisfigures", "A1ML.P1.png"), plot = A1ML.P1)
+
+
+pca.bake <- bake(pca.prep, train.dta)
+
+# Interested in PCA4 and PCA5. 
+A1ML.P2 <- pca.bake %>%
+  ggplot(aes(PC4, PC5, label=Total)) +
+  geom_point(aes(color = Total), alpha = 0.7, size = 5)+
+  geom_text(check_overlap = TRUE, hjust = "inward") +
+  labs(color = NULL) +
+ theme_minimal() 
+
+A1ML.P2
+ggsave(filename = here("results", "analysisfigures", "A1ML.P2.png"), plot = A1ML.P2)
+
+
+# no obvious clustering 
+```
+Looks like PCA1 has to do mainly with population, not sure why it popped up. PCA 2-5 look the most interesting. Based on ENSO value, it looks like PCA2 and PCA3 describe "normal" weather phases, or neither El Nino or La Nina classified as 0 ENSO. PCA4 appears Cooler phases or La Nina cycle, and PCA5 seems do describe El Nino, however Precipitation is not very representative of this. 
+
+```{r}
 # set workflow
 mlr.train.wflow <-
   workflow() %>% 
@@ -239,12 +283,14 @@ pois.wf <- workflow() %>%
   add_model(pois.spec)
 #fit the model and look at the predictions.
 pois.fit <- pois.wf %>% fit(data = train.dta)
-augment(pois.fit, new_data = train.dta, type.predict = "response") %>% 
+A1PR.P1 <- augment(pois.fit, new_data = train.dta, type.predict = "response") %>% 
   ggplot(aes(Total, .pred)) +
   geom_point(alpha = 0.1) +
   geom_abline(slope = 1, size = 1, color = "grey40") +
-  labs(title = "Monthly Dengue Case numbers using Poission Regression",
+  labs(title = "Monthly Dengue Case numbers using Poission Regression ~ Training Data",
        x = "Actual", y = "Predicted")
+A1PR.P1
+ggsave(filename = here("results", "analysisfigures", "A1PR.P1.png"), plot = A1PR.P1)
 
 augment(pois.fit, train.dta) %>% yardstick::rmse(truth = Total, .pred)
 
@@ -262,20 +308,24 @@ https://data.princeton.edu/wws509/r/overdispersion
 https://rcompanion.org/handbook/G_14.html
 
 ```{r}
-# worried a bit about multicollinearity, So I am going to run a few models with and without ENSO related measures. Because of this reason vairiable selection will be important
-summary(nbr1 <- glm.nb(Total ~  Pop + Precip + TAvg + SOI + ENSO, data = train.dta, maxit = 50)) # TAvg does not perform well
+# worried a bit about multicollinearity, So I am going to run a few models with and without ENSO related measures. Because of this reason variable selection will be important
+summary(nbr1 <- glm.nb(Total ~  Pop + Precip +  TAvg + SOI, data = train.dta, maxit = 50)) # TAvg does not perform well
 summary(nbr2 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI, data = train.dta, maxit = 50))
 summary(nbr3 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI + NINO3.4, data = train.dta, maxit = 50))
 summary(nbr4 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI + NINO4, data = train.dta, maxit = 50))
 summary(nbr5 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + NINO3.4, data = train.dta, maxit = 50))
-
+# standard error is a bit large in all of these, to be expected
 accuracy(list(nbr1, nbr2, nbr3, nbr4, nbr5),
           plotit=TRUE, digits=3)
 ```
+
 Looks like best model is model 2: Total ~  Pop + Precip +  MinAT + MaxAT + SOI, had an RMSE = 101	
 
+
 --------------------------------------------------------------------------------
+
 ## Decision Tree Model
+Going to be using the Tidymodels framwork again. 
 
 ```{r}
 folds <- vfold_cv(train.dta, v = 5, repeats = 5, strata = "Total")
@@ -298,6 +348,7 @@ dt.wflow <- workflow() %>%
 ```
 
 ### Tuning with a grid
+
 ```{r}
 ncores = 4
 cl <- makePSOCKcluster(ncores)
@@ -314,7 +365,8 @@ stopCluster(cl)
 ```
 
 
-### Plotting for the world to see
+### Visualization
+
 ```{r}
 tree.res %>%
   collect_metrics() %>%
@@ -339,27 +391,31 @@ final.dt.pred <- predict(final.dt.fit, train.dta)
 tree.res %>% show_best("rmse", n = 1)
 # RMSE = 98.81927
 ```
-RMSE = 1.193128	compared to Null model RMSE = 1.209 is not much of a difference
-It appears that this model found only Max and Min Air Tempertaure as predictors
-## Visualize
+
+
+## Visualize again
+
 ```{r}
 rpart.plot(extract_fit_parsnip(final.dt.fit)$fit)
-
 ```
 
 --------------------------------------------------------------------------------
+
 ## LASSO 
+
 sources:
 https://www.tidymodels.org/start/case-study/
 https://stackoverflow.com/questions/66639452/tuning-a-lasso-model-and-predicting-using-tidymodels
 
 ### Building model
+
 ```{r}
 folds <- vfold_cv(train.dta, v = 5, repeats = 5, strata = "Total")
 # create recipe
 lasso.rec <- recipe(Total ~ Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
   data = train.dta) %>% 
   step_dummy(all_nominal_predictors())
+ 
 # create model
 lasso.mod <- linear_reg() %>%
   set_mode("regression") %>%           
@@ -372,6 +428,7 @@ lasso.wflow <- workflow() %>%
 ```
 
 ### Train and tune LASSO
+
 ```{r}
 ### Setting cores
 cores <- parallel::detectCores()
@@ -394,6 +451,7 @@ stopCluster(cl)
 ```
 
 ### Choosing the best performing model
+
 ```{r}
 lasso.top.models <- lasso.res %>% select_best("rmse") 
 # finalize workflow with the best model
@@ -404,7 +462,7 @@ best.lasso.fit <- best.lasso.wflow %>%
   fit(data = train.dta)
 lasso.pred <- predict(best.lasso.fit, train.dta)
 lasso.res %>% show_best(n = 1)
-# RMSE = 113.3661	
+# RMSE = 112.85	
 
 tidy(extract_fit_parsnip(best.lasso.fit)) %>% 
   filter(estimate != 0)
@@ -422,9 +480,12 @@ plot(x, "lambda")
 
 
 --------------------------------------------------------------------------------
+
 ## K-Nearest Neighbors
 As a general rule, k should equal sqrt of training set. In this case that is around 6
-Sources: https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/classification.html#k-nearest-neighbors
+Sources: 
+https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/classification.html#k-nearest-neighbors
+https://www.r-bloggers.com/2021/02/using-tidymodels-to-predict-health-insurance-cost/
 ```{r}
 # create recipe
 knn.rec <- recipe(Total ~ quarter + Pop + MinAT + MaxAT + Precip + TAvg + SOI + NINO4 + NINO3.4 + ENSO,
@@ -452,13 +513,42 @@ augment(knn.fit1, train.dta) %>% yardstick::rmse(truth = Total, .pred)
 augment(knn.fit2, train.dta) %>% yardstick::rmse(truth = Total, .pred)
 augment(knn.fit3, train.dta) %>% yardstick::rmse(truth = Total, .pred)
 
-# RMSE = 61.2996	
+summary(knn.fit2)
+# RMSE = 52.77155	w/o resampling	
+```
+
+### Visualization on folds
+```{r}
+cores <- parallel::detectCores()
+ncores = 4
+cl <- makePSOCKcluster(ncores)
+registerDoParallel(cl)
+knn.cv <- vfold_cv(train.dta, prop = 0.9)
+knn.rsmpl <- fit_resamples(knn.wflow2,
+                           knn.cv,
+                           control = control_resamples(save_pred = TRUE))
+
+knn.rsmpl %>% collect_metrics()
+
+# RMSE = 77.7879416		
+
+knn.rsmpl %>%
+    unnest(.predictions) %>%
+    ggplot(aes(Total, .pred, color = id)) + 
+    geom_abline(lty = 2, color = "gray80", size = 1.5) + 
+    geom_point(alpha = 0.5) + 
+   scale_color_ptol("") +
+   theme_minimal() 
+
+stopCluster(cl)
 ```
 
 
+
+
+
 --------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+
 # Final model
 
 Model | RMSE
@@ -469,30 +559,34 @@ Poisson Regression | 77.94448
 Negative binomial regression | 101
 Decision Trees | 98.81927
 LASSO | 113.3661	
-K Nearest Forest Model | 61.2996
+K Nearest Neighbors Model | 77.7879416	
 
+I am going to choose the Poisson Regression because this model was a bit more tuned compared to the K Nearest Forest Mode
 
+```{r}
 
-# use test data
-final.mod <- final_wf %>% last_fit(test_split) # using test data
-final.mod %>% collect_metrics()
-# residuals
-final.res <- final_fit %>%
-  augment() %>% 
-  select(.pred, BodyTemp) %>%
-  mutate(.resid = BodyTemp - .pred)
-# training vs truth
-final.pred <- ggplot(final.res, aes(x = BodyTemp, y = .pred)) + 
-  geom_point()
-final_pred_plot
-# residuals vs trth
-final_resid_plot <- ggplot(final_resid, aes(y = .resid, x = .pred)) + 
-  geom_point() 
-final_resid_plot 
-#compare to null model
+final.pois.fit <- pois.wf %>% fit(data = test.dta)
+
+A1PR.P2 <- predict(final.pois.fit, new_data = test.dta)
+augment(final.pois.fit, new_data = test.dta, type.predict = "response") %>% 
+  ggplot(aes(Total, .pred)) +
+  geom_point(alpha = 0.1 , size = 2) +
+  geom_abline(slope = 1, size = 1, color = "grey40") +
+  labs(title = "Monthly Dengue Case numbers using Poission Regression",
+       x = "Actual", y = "Predicted") +
+   scale_color_ptol("") +
+   theme_minimal() 
+A1PR.P2
+
+final.pois.fit %>% 
+  extract_fit_parsnip() %>% 
+  tidy()
+
+augment(final.pois.fit, test.dta) %>% yardstick::rmse(truth = Total, .pred)
+
+# RMSE = 23.20935	
 
 ```
-
 
 
 
