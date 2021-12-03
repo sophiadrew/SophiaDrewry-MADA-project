@@ -1,0 +1,164 @@
+---
+title: Project Review Template 
+date: "`r file.mtime(knitr::current_input())`"
+#bibliography: ../media/references.bib
+output: 
+  html_document:
+    toc_depth: 3
+    number_sections: true
+---
+
+# Overview
+
+Title of project: "Using El Niño Southern Oscillation (ENSO) Cycle as a Predictor for Dengue Transmission in Iquitos Peru"
+
+Name of project author(s): Sophia Drewry
+
+Name of project reviewer: Joe Martin    
+
+# Specific project content evaluation
+
+## Background, Context and Motivation
+How well is the context of the project described? Is a comprehensive background, including summary of previous/related work given? Is the project well placed into the context of existing work (including proper referencing of existing work). Is it clear why the project was undertaken and what new information it hopes to provide?
+
+### Feedback and Comments
+
+The background, context, and motivation are clearly described and make for an interesting project. The question being addressed is whether you can model weather patterns to predict dengue transmission. The purpose is that warmer temperatures affect dengue-carrying mosquitoes and climate change threatens to worsen dengue transmission as a result. 
+
+In sections 1 and 2, I found a few very minor typos. The one thing I wanted clarification on while reading this was the difference between El Nino, El Nina, and La Nina (found in last paragraph of 1.0.1). The nino-regions.gif file is broken. 
+
+### Summary assessment
+
+* strong contextualization and motivation
+
+## Question description
+How well and clear are the question(s)/hypotheses the project aims to address described? Is it clear how the questions relate to the data?
+
+### Feedback and Comments
+
+Section 2 does a good job of describing the data, which variables are important, and which are predictors. It seems that there are two different data sources being used, one with more features related to weather, one with more features related to dengue. 
+
+### Summary assessment
+
+* question/hypotheses fully clear
+
+## Data description
+How well is the data overall described? Is the source provided? Is a codebook or other meta-information available that makes it clear what the data is? 
+
+### Feedback and Comments
+
+The Manuscript file does a good job of describing where the data comes from and generally what important variables exist. There is no other information available to describe data. I could not find information in any of the readme files. There is no readme file in the data folder. It would be helpful to have a data dictionary in this folder for each data source.
+
+### Summary assessment
+
+* source and overall structure of data somewhat explained
+
+## Data wrangling and exploratory analysis
+How well is the data cleaned/processed and explored? Are all steps reasonable and well explained? Are alternatives discussed and considered? Are meaningful exploratory results shown (e.g. in the supplementary materials)?
+
+### Feedback and Comments
+
+Data seems to have been cleaned well. Comments in the processing scripts are detailed and clear. 
+I wish the exploratory analysis had more commentary. I think the visualizations add a lot of value to this project and helped me understand the data, but I would also like to hear your though process, ideas, and other information I may not know. For example, in the plot titled "Weekly Reported Cases by Serotype in Iquitos Peru," there is an "other" category for serotype that spikes in 2005 and stays constant over years. Is this one serotype? Is there a story behind that spike?
+
+### Summary assessment
+
+* essentially no weaknesses in wrangling and exploratory component
+
+## Appropriateness of Analysis
+Were the analysis methods appropriate for the data? Was the analysis done properly? Were different components of the analysis (e.g. performance measure, variable selection, data pre-processing, model evaluation) done in the best way possible and explained well?
+
+### Feedback and Comments
+
+I wasn't entirely sure which files to run in order to answer this question. I reviewed all RMD files in the `analysis_code` folder. All seem to do an excellent job showing the different components of your analysis. I especially liked that you broke up exploratory, non-time series, and time series analyses. I did want to read more text in the Analysis #1 folder to learn more about your through process.
+
+### Summary assessment
+
+* strong and reasonable analysis
+
+## Presentation
+How well are results presented? Are tables and figures easy to read and understand? Are the main figures/tables publication level quality? 
+
+### Feedback and Comments
+
+All tables and figures turned out well! I like that you included a table comparing RMSE values. If possible, I would increase the size of the "SOI & SST in Region 4 & 3.4 Over Time" plot. Although it's not important to find individual values on this plot, it is a little difficult to see the patterns distinctly because the lines are so close together. I would also change the legend othe table "Weekly Reported Caes by Serotype." It was hard to distinguish between Denv 1 and Denv 2. It seems that there is one table missing. I see a file path for `Table1.rds`, but no image.
+
+### Summary assessment
+
+* results are very well presented
+
+## Discussion/Conclusions
+Are the study findings properly discussed? Are strengths and limitations acknowledged? Are findings interpreted properly?
+
+### Feedback and Comments
+
+Findings were included and discussed, but could use elaboration. Section 3.4 seems to discuss the strengths of your model, and section 4 seems to discuss a weakness. 
+
+### Summary assessment
+
+* major parts of discussion missing or wrong 
+
+## Further comments
+
+_Hi Sophia,_ 
+
+_I really enjoyed reviewing your project and learning about the effect climate patterns have on disease transmission. I especially enjoyed reviewing your exploratory analysis section, as well as the Analysis1.Rmd and Analysis2.Rmd files. I thought you did an excellent job building clear and meaningful visualizations that tell your story. Good luck on the remainder of your project!_
+
+_Joe_
+
+# Overall project content evaluation
+
+## Structure
+Is the project well structured? Are files in well labeled folders? Do files have reasonable names? Are all "junk" files not needed for analysis/reproduction removed? By just looking at files and folders, can you get an idea of how things fit together?
+
+### Feedback and Comments
+
+It was very clear how to reproduce your project. The primary `README.md` file is an excellent resource for explaining your work and describing your repository. Even without this, I had a clear idea of what order I should run your code and what files are most important to your project. 
+
+### Summary assessment
+
+* well structured
+
+## Documentation 
+How well is the project documented? Are you able to understand each step of the whole analysis, each decision that was made, and each line of code? Is enough information provided as comments in code or as part of Rmd files? 
+
+### Feedback and Comments
+
+Overall, your documentation is excellent. Again, readme files do a good job of explaining the framework of your project and many of your markdown files clearly explain your work. My previous comments point to the few places where I wanted more information when reviewing your work. 
+
+### Summary assessment
+
+* decently documented with some gaps
+
+## Reproducibility
+Are all results fully reproducible? Is documentation provided which clearly explains how to reproduce things, and does it work without the need for any manual intervention? Are you able to re-run the whole analysis without having to do manual interventions/edits?
+
+### Feedback and Comments
+
+I could not knit `Analysis #1.Rmd` or `Analysis #2.Rmd`. Both of these files resulted in errors. Otherwise, all other code works fine. 
+
+
+### Summary assessment
+
+* small parts not reproducible or required manual intervention 
+
+
+## Thoroughness
+How thorough was the overall study? Were alternatives (e.g. different ways of processing the data or different models) considered? Were alternatives discussed? Were the questions/hypotheses fully and thoroughly addressed?
+
+### Feedback and Comments
+
+I thought the study was thorough overall. You did a great job of trying several different models and choosing the best one. I would have liked more information in your discussion discussing the weakness you outlined, as well as the strengths of your model and how you could deploy it.
+
+### Summary assessment
+
+* decent level of thoroughness
+
+
+## Further comments
+
+_I'm interested to see how the remainder of your project turns out! It looks like you have all the right pieces in place and I'm curious to read more of your thoughts and analysis._
+
+
+
+
