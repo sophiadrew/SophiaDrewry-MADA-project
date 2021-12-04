@@ -1,0 +1,148 @@
+# Overview
+
+Title of project: Using El Niño Southern Oscillation (ENSO) Cycle as a Predictor for Dengue Transmission in Iquitos Peru
+
+Name of project author(s): Sophia Drewry
+
+Name of project reviewer: Tzu-Chun Chu
+
+
+# Specific project content evaluation
+Evaluate the different parts of the project by filling in the sections below.
+
+
+## Background, Context and Motivation
+How well is the context of the project described? Is a comprehensive background, including summary of previous/related work given? Is the project well placed into the context of existing work (including proper referencing of existing work). Is it clear why the project was undertaken and what new information it hopes to provide?
+
+
+### Feedback and Comments
+The background of the study was well-written. It provided sufficient evidences from current data and literature regarding global burden of Dengue. You conducted a thorough literature review discussing different patterns and determinants of the disease transmission and existing predictive models published to study this relationship. I like how to take a funnel introduction method to first bring out a broad introduction about Dengue disease, and narrow your focus to which factors might be useful to predict Dengue infection. One minor suggestion is to add your aim of this study at the end of the background section.     
+
+
+### Summary assessment 
+* strong contextualization and motivation
+
+
+## Question description
+How well and clear are the question(s)/hypotheses the project aims to address described? Is it clear how the questions relate to the data?
+
+
+### Feedback and Comments
+Question and hypothesis were well-explained. 
+
+### Summary assessment
+* question/hypotheses fully clear
+
+
+## Data description
+How well is the data overall described? Is the source provided? Is a codebook or other meta-information available that makes it clear what the data is? 
+
+### Feedback and Comments
+You explained well on the data source in the section 2.1 and 2.2 of the manuscript. One thing that I'm a bit confused is what are all the predictors you were considering to fit into the model and how the primary outcome was defined. A few more sentences to describe this information and also whether these variables will be used as continuous or categorical will be good. Adding some description in your README file might be a good idea for navigate readers about how you came to construct your final dataset for analysis. One more thing, !(nino-regions.gif) doesn't show. 
+
+### Summary assessment
+* source and overall structure of data somewhat explained
+
+
+## Data wrangling and exploratory analysis
+
+### Feedback and Comments
+Each step of data cleaning were addressed with detailed comments in the scripts and manuscript. You have done an impressive work on exploring the dataset to find the seasonal pattern of SOI, SST and weather. I really like your work on the data visualization. I saw two data processing scripts and then realized that there were created to performance data management on separate dataset, adding some explanation in the README file will be helpful. 
+
+
+### Summary assessment
+* essentially no weaknesses in wrangling and exploratory component
+
+
+
+## Appropriateness of Analysis
+Were the analysis methods appropriate for the data? Was the analysis done properly? Were different components of the analysis (e.g. performance measure, variable selection, data pre-processing, model evaluation) done in the best way possible and explained well?
+
+### Feedback and Comments
+Relevant tests were conducted for selecting the most appropriate analysis for the data set. I like how you chose different methods from multiple linear regression to noval ML approaches such as decision tree and KNN models for feature selection. The brief summary in your analysis scripts that described what you were going to perform was very helpful and made your script easy to follow. I would also suggest to check the diagnostic plots for all the model and see whether the models explain data well, or if you spot any problem such as curvature or non-constant variance. Variable important plot could be useful too for some of these non-interpretable models. Overall, the analyses were conducted in a precise and consistent manner. 
+
+
+### Summary assessment
+* strong and reasonable analysis
+
+## Presentation
+How well are results presented? Are tables and figures easy to read and understand? Are the main figures/tables publication level quality? 
+
+### Feedback and Comments
+
+Results for descriptive analyses and model fitting were well-written, and easy to follow. Each table and figure were referred in the context with detailed explanation and description. Size of some figures and labels could be bigger. Table 3.1 was not shown in the manuscript. I wonder why the RMSE for Poisson regression model on the test data was so much lower than the RMSE on the train data. 
+
+### Summary assessment
+* results are very well presented
+
+
+## Discussion/Conclusions
+Are the study findings properly discussed? Are strengths and limitations acknowledged? Are findings interpreted properly?
+
+### Feedback and Comments
+It seems like more in-depth contexts could be added to the discussion such as a summary of your findings on the most important factors that predict Dengue cases. Also, more discussion about the strengths and limitations of your study.
+
+
+### Summary assessment
+* major parts of discussion missing or wrong 
+
+
+## Further comments
+
+_Add any other comments regarding the different aspects of the project here. Write anything you think can help your classmate improve their project._
+
+
+
+# Overall project content evaluation
+Evaluate overall features of the project  by filling in the sections below.
+
+
+## Structure
+Is the project well structured? Are files in well labeled folders? Do files have reasonable names? Are all "junk" files not needed for analysis/reproduction removed? By just looking at files and folders, can you get an idea of how things fit together?
+
+### Feedback and Comments
+I think most of the files were named properly, therefore, I was able to navigate myself and find the right script to perform each task. It might just be me, I found that indexing scripts with 1 and 2 is a bit confusing, I thought at first that the second script is the most update-to-date one. Perhaps you can name them as part-1 and part-2 or separate these scripts based on the tasks performed such as putting all the regression models in one script (Null, multi linear, Poisson and negative regression), and then putting all the ML models into another script. I knew this was explained in your main README file, which was good. I think renaming them will be helpful too. Some unused script or files can be moved to archive folder.
+
+### Summary assessment
+* mostly clear, but some confusing parts (e.g. useless files, things in the wrong folders)
+
+
+## Documentation 
+How well is the project documented? Are you able to understand each step of the whole analysis, each decision that was made, and each line of code? Is enough information provided as comments in code or as part of Rmd files? 
+
+### Feedback and Comments
+Comments in the script were organized and easy to follow. 
+
+### Summary assessment
+* fully and well documented
+
+
+## Reproducibility
+Are all results fully reproducible? Is documentation provided which clearly explains how to reproduce things, and does it work without the need for any manual intervention? Are you able to re-run the whole analysis without having to do manual interventions/edits?
+
+### Feedback and Comments
+I can reproduce your results running data processing and exploratory scripts without any problem. I did ran into some issues with both analysis scripts, for the first script, I got an error that showed basically "too little data to stratify" when I tried to create 5-fold 5 repeated cross-validation. You also pointed out the problem with smaller data sets in your result, so I wonderful how you resolved this. Also, I didn't see you used a set.seed, which is useful for generating the same results every time you performed the analysis. This could be the reason why I ran into the error creating CV set, since the script will generate different CV set every time when we re-run the code. For the second script, I got this error message "Error in stl(., s.window = "periodic") : only univariate series are allowed" (line 91).  
+
+
+### Summary assessment
+* small parts not reproducible or required manual intervention 
+
+
+
+## Thoroughness
+How thorough was the overall study? Were alternatives (e.g. different ways of processing the data or different models) considered? Were alternatives discussed? Were the questions/hypotheses fully and thoroughly addressed?
+
+### Feedback and Comments
+I think your study is overall well-organized, and just some more work on discussion and supplementary will help to polish your manuscript.
+
+### Summary assessment
+* strong level of thorougness
+
+
+## Further comments
+This is a very interesting study, and I think you did a great job justifying the choice of your models and carrying out the analyses. Hope some of these feedback are helpful and keep up with the great work, Sophia! 
+
+
+
+
+
