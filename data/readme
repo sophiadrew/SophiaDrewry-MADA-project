@@ -1,0 +1,28 @@
+# Data Overview
+
+# Raw Data
+The `raw_data` folder contains data from 2 different data sources. 
+
+Dengue forecaasting project -> processed in processingscript.R
+- 'dengue_iquitos.csv'
+- 'Iquitos_Population_Data.csv'
+- 'Iquitos_Precip.xlsx'
+- 'Iquitos_Weather.xlsx'
+
+NOAA data -> processed in processingscript2.R
+- 'elninoyrs.txt'
+- 'noa.soi.txt'
+- 'noaa.sst.txt'
+
+# Processed Data
+processed_data includes cleaned version of all data files as well as combined cleaned data set called 'Finaldata.rds'
+
+# Data Sources
+All data was retreived from open source pages
+* Dengue Forecasting project: https://dengueforecasting.noaa.gov/
+* NOAA data: https://www.cpc.ncep.noaa.gov/data/indices/
+
+Metadata
+
+Metasata source for Dengue forecaasting project data can be found here: https://dengueforecasting.noaa.gov/Training/dengue-metadata-iquitos_training.html
+Data dictionary for NOAA data not included sice each variable was downloaded as a seperate data file (SST, SOI and ENSO)

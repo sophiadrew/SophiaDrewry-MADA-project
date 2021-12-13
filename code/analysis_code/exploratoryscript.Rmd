@@ -178,9 +178,8 @@ Table1 <- table1::table1(~Denv1 + Denv2 + Denv3 + Denv4 + Total | year, data = d
 Table1
 
 #save data frame table to file for later use in manuscript
-Table1 = here("results","exploratoryfigures", "Table1.rds")
+Table1 = here("results","exploratoryfigures", "Table1.Rds")
 saveRDS(Table1, file = Table1)
-
 ```
 
 ##############################################################################################  

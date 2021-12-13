@@ -82,7 +82,7 @@ barplot(tapply(qdta$Total, format(qdta$quarter), FUN=sum))
 # Creating a correlation matrix  
 A1P1tbl  <- cor(qdta[, unlist(lapply(qdta, is.numeric))])
 A1P1tbl 
-saveRDS(A1P1tbl, file = here("results","analysisfigures", "A1P1tbl.rds"))
+saveRDS(A1P1tbl, file = here("results","analysisfigures", "A1P1tbl.Rds"))
 
 # graphing correlation matrix  
 A1P1 <- ggcorrplot(A1P1tbl, hc.order = TRUE, outline.col = "white")
@@ -316,7 +316,9 @@ summary(nbr4 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + SOI + NINO4, dat
 summary(nbr5 <- glm.nb(Total ~  Pop + Precip +  MinAT + MaxAT + NINO3.4, data = train.dta, maxit = 50))
 # standard error is a bit large in all of these, to be expected
 accuracy(list(nbr1, nbr2, nbr3, nbr4, nbr5),
-          plotit=TRUE, digits=3)
+          plotit=FALSE, digits=3)
+# Chosen Model
+A1NB <- accuracy(list(nbr2), plotit=TRUE, digits=3)
 ```
 
 Looks like best model is model 2: Total ~  Pop + Precip +  MinAT + MaxAT + SOI, had an RMSE = 101	
@@ -368,7 +370,7 @@ stopCluster(cl)
 ### Visualization
 
 ```{r}
-tree.res %>%
+MLDT <- tree.res %>%
   collect_metrics() %>%
   mutate(tree_depth = factor(tree_depth)) %>%
   ggplot(aes(cost_complexity, mean, color = tree_depth)) +
@@ -377,6 +379,8 @@ tree.res %>%
   facet_wrap(~ .metric, scales = "free", nrow = 2) +
   scale_x_log10(labels = scales::label_number()) +
   scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
+MLDT
+ggsave(filename = here("results", "analysisfigures", "MLDT.png"), plot = MLDT)
 # Looks like we have 2 deeper "trees" that perform similar in cost complexity as well, but not the best
 # Lets check out the top 5
 tree.res %>% show_best("rmse")
@@ -532,14 +536,15 @@ knn.rsmpl %>% collect_metrics()
 
 # RMSE = 77.7879416		
 
-knn.rsmpl %>%
+MLKN<- knn.rsmpl %>%
     unnest(.predictions) %>%
     ggplot(aes(Total, .pred, color = id)) + 
     geom_abline(lty = 2, color = "gray80", size = 1.5) + 
     geom_point(alpha = 0.5) + 
    scale_color_ptol("") +
    theme_minimal() 
-
+MLKN
+ggsave(filename = here("results", "analysisfigures", "MLKN.png"), plot = MLKN)
 stopCluster(cl)
 ```
 
@@ -568,7 +573,7 @@ I am going to choose the Poisson Regression because this model was a bit more tu
 final.pois.fit <- pois.wf %>% fit(data = test.dta)
 
 A1PR.P2 <- predict(final.pois.fit, new_data = test.dta)
-augment(final.pois.fit, new_data = test.dta, type.predict = "response") %>% 
+MLFIN<- augment(final.pois.fit, new_data = test.dta, type.predict = "response") %>% 
   ggplot(aes(Total, .pred)) +
   geom_point(alpha = 0.1 , size = 2) +
   geom_abline(slope = 1, size = 1, color = "grey40") +
@@ -576,6 +581,8 @@ augment(final.pois.fit, new_data = test.dta, type.predict = "response") %>%
        x = "Actual", y = "Predicted") +
    scale_color_ptol("") +
    theme_minimal() 
+MLFIN
+ggsave(filename = here("results", "analysisfigures", "MLFIN.png"), plot = MLFIN)
 A1PR.P2
 
 final.pois.fit %>% 

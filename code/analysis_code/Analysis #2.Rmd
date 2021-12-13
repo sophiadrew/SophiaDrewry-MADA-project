@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Overview: 
-The goal of this analysis script is to create and fit time series models from weekly data. Quarterly averaging was done to account for the variable lag period between ENSO related weather events and the increases or decreases in dengue incidence. This variable lag period can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. This quarterly averaging will result in fewer data points and thus a weaker model, but was done for the sake of producing models within the scope that the MADA class has covered. To see attempts at modeling weekly data with autoregressive models, please look at Analysis #2 script.
+The goal of this analysis script is to create and fit time series models from weekly data. Variable lag period between ENSO related weather events and the increases or decreases in dengue incidence can be anywhere between 3-6 weeks, with warmer temperatures correlated with shorter lag periods and vice versa. Weekly averaging will result in a more sensitive model with appropriate amount of observations. For the sake of producing models within the scope that the MADA class has covered, the final model will be chosen from Analysis #1 script, modeling monthly averaged data
 
 *HYPOTHESIS: Can weekly ENSO related weather predictors predict dengue case load?*
 
